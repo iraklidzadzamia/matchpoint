@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MatchState } from '../engine/types';
 import { getSideNames } from '../engine/scoring';
+import { MatchScoreLines } from '../components/MatchScoreLines';
 import { theme } from '../styles/theme';
 import { usePortraitOrientation } from '../hooks/useOrientation';
 import { t } from '../i18n';
@@ -49,14 +50,13 @@ export const MatchSummaryScreen: React.FC<MatchSummaryScreenProps> = ({
         {/* Set Scores Table */}
         <View style={styles.scoreCard}>
           <Text style={styles.cardHeader}>Match Score</Text>
-          {matchState.completedSets.map((setScore, idx) => (
-            <View key={idx} style={styles.setRow}>
-              <Text style={styles.setText}>Set {idx + 1}</Text>
-              <Text style={styles.scoreText}>
-                {setScore[0]} - {setScore[1]}
-              </Text>
-            </View>
-          ))}
+          <MatchScoreLines
+            side1Name={getSideNames(matchState.config, 'side1')}
+            side2Name={getSideNames(matchState.config, 'side2')}
+            setScores={matchState.completedSets}
+            winner={winnerSide}
+            size="large"
+          />
           <View style={styles.durationRow}>
             <Ionicons name="time-outline" size={16} color={theme.colors.text.secondary} />
             <Text style={styles.durationText}>Duration: {durationText}</Text>

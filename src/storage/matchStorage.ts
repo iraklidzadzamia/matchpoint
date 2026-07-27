@@ -119,6 +119,17 @@ export async function appendToHistory(record: MatchRecord): Promise<void> {
   }
 }
 
+export async function deleteFromHistory(id: string): Promise<MatchRecord[]> {
+  try {
+    const next = (await loadHistory()).filter((r) => r.id !== id);
+    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+    return next;
+  } catch (err) {
+    console.warn('Delete history entry error:', err);
+    return loadHistory();
+  }
+}
+
 export async function clearHistory(): Promise<void> {
   try {
     await AsyncStorage.removeItem(HISTORY_KEY);

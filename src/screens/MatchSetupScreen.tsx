@@ -11,12 +11,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Sport, MatchConfig, PlayerSide, MatchFormat } from '../engine/types';
 import { NameInput } from '../components/NameInput';
 import { SideSelector } from '../components/SideSelector';
+import { Segmented } from '../components/Segmented';
+import { SwipeBackView } from '../components/SwipeBackView';
 import { theme } from '../styles/theme';
 import { usePortraitOrientation } from '../hooks/useOrientation';
 import { t } from '../i18n';
 
 interface MatchSetupScreenProps {
-  sport: Sport;
   baseConfig: MatchConfig;
   onBack: () => void;
   onStartMatch: (config: MatchConfig) => void;
@@ -24,7 +25,6 @@ interface MatchSetupScreenProps {
 }
 
 export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
-  sport,
   baseConfig,
   onBack,
   onStartMatch,
@@ -32,13 +32,17 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
 }) => {
   usePortraitOrientation();
 
+  // Sport changes no rules — those all live in Settings — so it is just a
+  // label kept for the history list.
+  const [sport, setSport] = useState<Sport>(baseConfig.sport);
   const [isSingles, setIsSingles] = useState<boolean>(baseConfig.format === 'singles');
-  const [customNames, setCustomNames] = useState<boolean>(true);
 
-  const [side1P1, setSide1P1] = useState('Irakli');
-  const [side1P2, setSide1P2] = useState('Serena');
-  const [side2P1, setSide2P1] = useState('Rafael');
-  const [side2P2, setSide2P2] = useState('Venus');
+  // Left empty on purpose: a blank field with a placeholder is clearer than
+  // pre-filled sample names you might start a real match with.
+  const [side1P1, setSide1P1] = useState('');
+  const [side1P2, setSide1P2] = useState('');
+  const [side2P1, setSide2P1] = useState('');
+  const [side2P2, setSide2P2] = useState('');
 
   const [scoreKeeper, setScoreKeeper] = useState<PlayerSide>('side1');
   const [servingFirst, setServingFirst] = useState<PlayerSide>('side1');
@@ -50,9 +54,26 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
     setSide2P2(side1P2);
   };
 
-  const resolvedNames = customNames
-    ? { s1p1: side1P1.trim(), s1p2: side1P2.trim(), s2p1: side2P1.trim(), s2p2: side2P2.trim() }
-    : { s1p1: '', s1p2: '', s2p1: '', s2p2: '' };
+  const resolvedNames = {
+    s1p1: side1P1.trim(),
+    s1p2: side1P2.trim(),
+    s2p1: side2P1.trim(),
+    s2p2: side2P2.trim(),
+  };
+
+  // With nothing typed for a side, name it "Side 1" rather than inventing a
+  // partner — "Side 1 & Player 2" would follow the match into its history.
+  const buildSide = (side: PlayerSide) => {
+    const [p1, p2] =
+      side === 'side1'
+        ? [resolvedNames.s1p1, resolvedNames.s1p2]
+        : [resolvedNames.s2p1, resolvedNames.s2p2];
+    const fallback = side === 'side1' ? 'Side 1' : 'Side 2';
+
+    if (isSingles) return { player1: p1 || fallback };
+    if (!p1 && !p2) return { player1: fallback };
+    return { player1: p1 || 'Player 1', player2: p2 || 'Player 2' };
+  };
 
   const handleStart = () => {
     const format: MatchFormat = isSingles ? 'singles' : 'doubles';
@@ -61,14 +82,10 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
       ...baseConfig,
       sport,
       format,
-      side1: {
-        player1: resolvedNames.s1p1 || 'Side 1',
-        player2: isSingles ? undefined : resolvedNames.s1p2 || 'Player 2',
-      },
-      side2: {
-        player1: resolvedNames.s2p1 || 'Side 2',
-        player2: isSingles ? undefined : resolvedNames.s2p2 || 'Player 2',
-      },
+      // Star point and golden point are padel rules; tennis plays advantages.
+      goldenPointEnabled: sport === 'padel' ? baseConfig.goldenPointEnabled : false,
+      side1: buildSide('side1'),
+      side2: buildSide('side2'),
       servingFirst,
       scoreKeeper,
     };
@@ -91,82 +108,69 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
   };
 
   return (
+    <SwipeBackView onBack={onBack}>
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack}>
           <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          New {sport === 'tennis' ? 'Tennis' : 'Padel'} Match
-        </Text>
+        <Text style={styles.headerTitle}>{t('ui.newMatch')}</Text>
         <TouchableOpacity style={styles.settingsBtn} onPress={onOpenSettings}>
           <Ionicons name="settings-outline" size={22} color={theme.colors.text.primary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Format Options Toggles */}
-        <View style={styles.toggleRow}>
-          <TouchableOpacity
-            style={styles.checkboxItem}
-            onPress={() => setCustomNames(!customNames)}
-          >
-            <Ionicons
-              name={customNames ? "checkbox" : "square-outline"}
-              size={22}
-              color={theme.colors.accent.primary}
-            />
-            <Text style={styles.checkboxLabel}>{t('ui.customNames')}</Text>
-          </TouchableOpacity>
+        <Segmented
+          options={[
+            { value: 'tennis', label: t('ui.tennis') },
+            { value: 'padel', label: t('ui.padel') },
+          ]}
+          value={sport}
+          onChange={setSport}
+        />
 
-          <TouchableOpacity
-            style={styles.checkboxItem}
-            onPress={() => setIsSingles(!isSingles)}
-          >
-            <Ionicons
-              name={isSingles ? "checkbox" : "square-outline"}
-              size={22}
-              color={theme.colors.accent.primary}
-            />
-            <Text style={styles.checkboxLabel}>{t('ui.singles')}</Text>
-          </TouchableOpacity>
-        </View>
+        <Segmented
+          options={[
+            { value: 'singles', label: t('ui.singles') },
+            { value: 'doubles', label: t('ui.doubles') },
+          ]}
+          value={isSingles ? 'singles' : 'doubles'}
+          onChange={(v) => setIsSingles(v === 'singles')}
+        />
 
         {/* Player names, one side per full-width card */}
-        {customNames && (
-          <View>
-            <View style={styles.sideCard}>
-              <View style={styles.sideHeaderRow}>
-                <View style={[styles.sideDot, { backgroundColor: theme.colors.side1.base }]} />
-                <Text style={[styles.sideHeader, { color: theme.colors.side1.base }]}>Side 1</Text>
-              </View>
-              <NameInput side="side1" value={side1P1} onChangeText={setSide1P1} placeholder="Player 1" />
-              {!isSingles && (
-                <NameInput side="side1" value={side1P2} onChangeText={setSide1P2} placeholder="Player 2" />
-              )}
-            </View>
-
-            <View style={styles.swapRow}>
-              <View style={styles.swapLine} />
-              <TouchableOpacity style={styles.swapBtn} onPress={handleSwapSidesInput} activeOpacity={0.7}>
-                <Ionicons name="swap-vertical" size={20} color={theme.colors.text.secondary} />
-                <Text style={styles.swapBtnText}>{t('ui.swapSides')}</Text>
-              </TouchableOpacity>
-              <View style={styles.swapLine} />
-            </View>
-
-            <View style={styles.sideCard}>
-              <View style={styles.sideHeaderRow}>
-                <View style={[styles.sideDot, { backgroundColor: theme.colors.side2.base }]} />
-                <Text style={[styles.sideHeader, { color: theme.colors.side2.base }]}>Side 2</Text>
-              </View>
-              <NameInput side="side2" value={side2P1} onChangeText={setSide2P1} placeholder="Player 1" />
-              {!isSingles && (
-                <NameInput side="side2" value={side2P2} onChangeText={setSide2P2} placeholder="Player 2" />
-              )}
-            </View>
+        <Text style={styles.sectionLabel}>{t('ui.players')}</Text>
+        <View style={styles.sideCard}>
+          <View style={styles.sideHeaderRow}>
+            <View style={[styles.sideDot, { backgroundColor: theme.colors.side1.base }]} />
+            <Text style={[styles.sideHeader, { color: theme.colors.side1.base }]}>Side 1</Text>
           </View>
-        )}
+          <NameInput side="side1" value={side1P1} onChangeText={setSide1P1} placeholder="Player 1" />
+          {!isSingles && (
+            <NameInput side="side1" value={side1P2} onChangeText={setSide1P2} placeholder="Player 2" />
+          )}
+        </View>
+
+        <View style={styles.swapRow}>
+          <View style={styles.swapLine} />
+          <TouchableOpacity style={styles.swapBtn} onPress={handleSwapSidesInput} activeOpacity={0.7}>
+            <Ionicons name="swap-vertical" size={20} color={theme.colors.text.secondary} />
+            <Text style={styles.swapBtnText}>{t('ui.swapSides')}</Text>
+          </TouchableOpacity>
+          <View style={styles.swapLine} />
+        </View>
+
+        <View style={styles.sideCard}>
+          <View style={styles.sideHeaderRow}>
+            <View style={[styles.sideDot, { backgroundColor: theme.colors.side2.base }]} />
+            <Text style={[styles.sideHeader, { color: theme.colors.side2.base }]}>Side 2</Text>
+          </View>
+          <NameInput side="side2" value={side2P1} onChangeText={setSide2P1} placeholder="Player 1" />
+          {!isSingles && (
+            <NameInput side="side2" value={side2P2} onChangeText={setSide2P2} placeholder="Player 2" />
+          )}
+        </View>
 
         {/* Who keeps score? */}
         <SideSelector
@@ -186,17 +190,17 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
           onSelectSide={setServingFirst}
         />
 
-        {/* Start Button */}
-        <TouchableOpacity
-          style={styles.startBtn}
-          onPress={handleStart}
-          activeOpacity={0.8}
-        >
+      </ScrollView>
+
+      {/* Pinned so the primary action is always reachable, however long the form */}
+      <View style={styles.footer}>
+        <TouchableOpacity style={styles.startBtn} onPress={handleStart} activeOpacity={0.85}>
           <Text style={styles.startBtnText}>{t('ui.startMatch')}</Text>
           <Ionicons name="arrow-forward" size={22} color={theme.colors.bg.base} />
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </SafeAreaView>
+    </SwipeBackView>
   );
 };
 
@@ -228,21 +232,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: theme.spacing.md,
   },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: theme.spacing.xl,
-    marginBottom: theme.spacing.md,
-  },
-  checkboxItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  checkboxLabel: {
-    color: theme.colors.text.primary,
-    fontSize: 15,
-    fontWeight: '600',
+  sectionLabel: {
+    color: theme.colors.text.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   sideCard: {
     backgroundColor: theme.colors.bg.surface,
@@ -296,15 +293,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  footer: {
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.glass.border,
+    backgroundColor: theme.colors.bg.base,
+  },
   startBtn: {
-    height: 56,
+    height: 58,
     backgroundColor: theme.colors.accent.primary,
     borderRadius: theme.radius.lg,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    marginTop: theme.spacing.lg,
     shadowColor: theme.colors.accent.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

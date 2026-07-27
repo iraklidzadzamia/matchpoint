@@ -94,7 +94,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           {/* Game Rules Section */}
           <Text style={styles.sectionHeader}>Game Settings</Text>
           <View style={styles.cardGroup}>
-            {/* What happens at 40:40 */}
+            {/* What happens at 40:40 — star point and golden point are padel
+                rules, so tennis matches simply play advantages. */}
+            {config.sport === 'padel' && (
             <View style={styles.rowSubSection}>
               <Text style={styles.rowLabel}>{t('ui.deuceRule')}</Text>
               {DEUCE_RULES.map((rule) => {
@@ -121,6 +123,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 );
               })}
             </View>
+            )}
 
             {/* Tie-Break Toggle */}
             <View style={styles.row}>

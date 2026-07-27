@@ -10,7 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MatchRecord } from '../engine/types';
-import { loadHistory, clearHistory } from '../storage/matchStorage';
+import { loadHistory, clearHistory, deleteFromHistory } from '../storage/matchStorage';
+import { MatchScoreLines } from '../components/MatchScoreLines';
+import { SwipeBackView } from '../components/SwipeBackView';
 import { usePortraitOrientation } from '../hooks/useOrientation';
 import { theme } from '../styles/theme';
 import { t } from '../i18n';
@@ -33,64 +35,40 @@ function formatDuration(sec: number): string {
   return hours > 0 ? `${hours}h ${mins % 60}m` : `${mins}m`;
 }
 
-const MatchRow: React.FC<{ record: MatchRecord }> = ({ record }) => {
-  const side1Won = record.winner === 'side1';
+const MatchRow: React.FC<{
+  record: MatchRecord;
+  onDelete: (record: MatchRecord) => void;
+}> = ({ record, onDelete }) => (
+  <View style={styles.card}>
+    <View style={styles.cardHeader}>
+      <Text style={styles.metaText}>
+        {record.sport === 'tennis' ? t('ui.tennis') : t('ui.padel')} ·{' '}
+        {record.format === 'singles' ? t('ui.singles') : t('ui.doubles')}
+      </Text>
+      <Text style={styles.metaText}>{formatDate(record.startedAt)}</Text>
+    </View>
 
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.metaText}>
-          {record.sport === 'tennis' ? t('ui.tennis') : t('ui.padel')} ·{' '}
-          {record.format === 'singles' ? t('ui.singles') : t('ui.doubles')}
-        </Text>
-        <Text style={styles.metaText}>{formatDate(record.startedAt)}</Text>
-      </View>
+    <MatchScoreLines
+      side1Name={record.side1Name}
+      side2Name={record.side2Name}
+      setScores={record.setScores}
+      winner={record.winner}
+    />
 
-      <View style={styles.playerRow}>
-        <Text
-          style={[styles.playerName, side1Won && styles.playerNameWon]}
-          numberOfLines={1}
-        >
-          {record.side1Name}
-        </Text>
-        <View style={styles.scoreGroup}>
-          {record.setScores.map((set, idx) => (
-            <Text key={idx} style={[styles.setScore, side1Won && styles.setScoreWon]}>
-              {set[0]}
-            </Text>
-          ))}
-          {side1Won && (
-            <Ionicons name="trophy" size={15} color={theme.colors.status.gold} />
-          )}
-        </View>
-      </View>
-
-      <View style={styles.playerRow}>
-        <Text
-          style={[styles.playerName, !side1Won && styles.playerNameWon]}
-          numberOfLines={1}
-        >
-          {record.side2Name}
-        </Text>
-        <View style={styles.scoreGroup}>
-          {record.setScores.map((set, idx) => (
-            <Text key={idx} style={[styles.setScore, !side1Won && styles.setScoreWon]}>
-              {set[1]}
-            </Text>
-          ))}
-          {!side1Won && (
-            <Ionicons name="trophy" size={15} color={theme.colors.status.gold} />
-          )}
-        </View>
-      </View>
-
-      <View style={styles.durationRow}>
+    <View style={styles.footerRow}>
+      <View style={styles.durationGroup}>
         <Ionicons name="time-outline" size={13} color={theme.colors.text.muted} />
         <Text style={styles.durationText}>{formatDuration(record.durationSec)}</Text>
       </View>
+      <TouchableOpacity
+        onPress={() => onDelete(record)}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      >
+        <Ionicons name="trash-outline" size={16} color={theme.colors.text.muted} />
+      </TouchableOpacity>
     </View>
-  );
-};
+  </View>
+);
 
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
   usePortraitOrientation();
@@ -115,9 +93,25 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
     ]);
   };
 
+  const handleDeleteOne = (record: MatchRecord) => {
+    Alert.alert(
+      t('ui.deleteMatchTitle'),
+      `${record.side1Name} — ${record.side2Name}`,
+      [
+        { text: t('ui.cancel'), style: 'cancel' },
+        {
+          text: t('ui.delete'),
+          style: 'destructive',
+          onPress: async () => setRecords(await deleteFromHistory(record.id)),
+        },
+      ]
+    );
+  };
+
   const isEmpty = records !== null && records.length === 0;
 
   return (
+    <SwipeBackView onBack={onBack}>
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} onPress={onBack}>
@@ -147,11 +141,12 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
         <FlatList
           data={records ?? []}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <MatchRow record={item} />}
+          renderItem={({ item }) => <MatchRow record={item} onDelete={handleDeleteOne} />}
           contentContainerStyle={styles.listContent}
         />
       )}
     </SafeAreaView>
+    </SwipeBackView>
   );
 };
 
@@ -200,48 +195,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  playerRow: {
+  footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: theme.spacing.sm,
-    paddingVertical: 3,
-  },
-  playerName: {
-    flex: 1,
-    color: theme.colors.text.secondary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  playerNameWon: {
-    color: theme.colors.text.primary,
-    fontWeight: '800',
-  },
-  scoreGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  setScore: {
-    color: theme.colors.text.secondary,
-    fontSize: 16,
-    fontWeight: '700',
-    minWidth: 14,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-  },
-  setScoreWon: {
-    color: theme.colors.text.primary,
-    fontWeight: '800',
-  },
-  durationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
     marginTop: theme.spacing.sm,
     paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: theme.colors.glass.border,
+  },
+  durationGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   durationText: {
     color: theme.colors.text.muted,

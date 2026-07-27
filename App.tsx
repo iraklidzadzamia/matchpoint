@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Brightness from 'expo-brightness';
-import { Sport, MatchConfig, PlayerSide, AppSettings } from './src/engine/types';
+import { MatchConfig, PlayerSide, AppSettings } from './src/engine/types';
 import {
   defaultMatchConfig,
   defaultAppSettings,
@@ -26,7 +26,6 @@ type Screen = 'home' | 'setup' | 'score' | 'summary' | 'history';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
-  const [selectedSport, setSelectedSport] = useState<Sport>('tennis');
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [activeConfig, setActiveConfig] = useState<MatchConfig>(defaultMatchConfig);
   const [appSettings, setAppSettings] = useState<AppSettings>(defaultAppSettings);
@@ -90,8 +89,7 @@ export default function App() {
     applyBrightness().catch(() => {});
   }, [currentScreen, appSettings.maxBrightness]);
 
-  const handleStartSetup = (sport: Sport) => {
-    setSelectedSport(sport);
+  const handleStartSetup = () => {
     setCurrentScreen('setup');
   };
 
@@ -129,11 +127,17 @@ export default function App() {
     setCurrentScreen('home');
   };
 
+  const isOverlayScreen = currentScreen === 'setup' || currentScreen === 'history';
+
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
-      {currentScreen === 'home' && (
+      {/* Home stays mounted under setup and history, so swiping back reveals
+          the real screen instead of an empty gap — and never remounts, so
+          there is no flash when the swipe completes. */}
+      {(currentScreen === 'home' || isOverlayScreen) && (
         <HomeScreen
+          isActive={currentScreen === 'home'}
           onStartSetup={handleStartSetup}
           onContinueMatch={handleContinueMatch}
           onOpenSettings={() => setSettingsVisible(true)}
@@ -142,17 +146,20 @@ export default function App() {
       )}
 
       {currentScreen === 'history' && (
-        <HistoryScreen onBack={() => setCurrentScreen('home')} />
+        <View style={StyleSheet.absoluteFill}>
+          <HistoryScreen onBack={() => setCurrentScreen('home')} />
+        </View>
       )}
 
       {currentScreen === 'setup' && (
-        <MatchSetupScreen
-          sport={selectedSport}
-          baseConfig={activeConfig}
-          onBack={() => setCurrentScreen('home')}
-          onStartMatch={handleStartMatch}
-          onOpenSettings={() => setSettingsVisible(true)}
-        />
+        <View style={StyleSheet.absoluteFill}>
+          <MatchSetupScreen
+            baseConfig={activeConfig}
+            onBack={() => setCurrentScreen('home')}
+            onStartMatch={handleStartMatch}
+            onOpenSettings={() => setSettingsVisible(true)}
+          />
+        </View>
       )}
 
       {currentScreen === 'score' && matchState && (

@@ -52,7 +52,7 @@ export const SideSelector: React.FC<SideSelectorProps> = ({
               {selected && (
                 <Ionicons
                   name="checkmark-circle"
-                  size={18}
+                  size={15}
                   color={palette.base}
                   style={styles.check}
                 />
@@ -67,14 +67,13 @@ export const SideSelector: React.FC<SideSelectorProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
   title: {
-    color: theme.colors.text.primary,
-    fontSize: 16,
+    color: theme.colors.text.secondary,
+    fontSize: 14,
     fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 6,
   },
   buttonsRow: {
     flexDirection: 'row',
@@ -82,14 +81,14 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    minHeight: 64,
-    borderRadius: theme.radius.lg,
+    minHeight: 46,
+    borderRadius: theme.radius.md,
     backgroundColor: theme.colors.bg.surface,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: theme.colors.glass.border,
     justifyContent: 'center',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   buttonInner: {
     flexDirection: 'row',
@@ -104,7 +103,7 @@ const styles = StyleSheet.create({
   buttonText: {
     flex: 1,
     color: theme.colors.text.secondary,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   buttonTextSelected: {
@@ -113,7 +112,7 @@ const styles = StyleSheet.create({
   },
   check: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    top: 4,
+    right: 4,
   },
 });

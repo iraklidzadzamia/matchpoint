@@ -5,6 +5,7 @@ jest.mock('../../hooks/useOrientation', () => ({ usePortraitOrientation: () => {
 
 import { MatchSetupScreen } from '../MatchSetupScreen';
 import { MatchConfig } from '../../engine/types';
+import { getSideNames } from '../../engine/scoring';
 
 const baseConfig: MatchConfig = {
   sport: 'padel',
@@ -22,19 +23,23 @@ const baseConfig: MatchConfig = {
   scoreKeeper: 'side1',
 };
 
-function renderTexts(): string[] {
+function render(onStartMatch: (config: MatchConfig) => void = () => {}): ReactTestRenderer {
   let instance!: ReactTestRenderer;
   act(() => {
     instance = renderer.create(
       <MatchSetupScreen
-        sport="padel"
         baseConfig={baseConfig}
         onBack={() => {}}
-        onStartMatch={() => {}}
+        onStartMatch={onStartMatch}
         onOpenSettings={() => {}}
       />
     );
   });
+  return instance;
+}
+
+function renderTexts(): string[] {
+  const instance = render();
   const texts: string[] = [];
   const walk = (node: any) => {
     if (node === null || node === undefined) return;
@@ -46,22 +51,50 @@ function renderTexts(): string[] {
   return texts;
 }
 
-describe('MatchSetupScreen side labels', () => {
-  test('never stitches a fallback pair like "Side 1 & Player 2"', () => {
-    // Custom names default on, so the seeded names are used
+describe('MatchSetupScreen', () => {
+  test('falls back to plain side names, never a stitched pair', () => {
+    // Name fields start empty, so the selectors must not invent a partner
     const texts = renderTexts();
-    const stitched = texts.filter((s) => /^Side \d & /.test(s));
-    expect(stitched).toEqual([]);
+    expect(texts.filter((s) => /^Side \d & /.test(s))).toEqual([]);
+    expect(texts).toContain('Side 1');
+    expect(texts).toContain('Side 2');
   });
 
-  test('shows the entered pair names on the side selectors', () => {
+  test('offers sport and format as named choices rather than checkboxes', () => {
     const texts = renderTexts();
-    expect(texts).toContain('Irakli & Serena');
-    expect(texts).toContain('Rafael & Venus');
+    expect(texts).toContain('Tennis');
+    expect(texts).toContain('Padel');
+    expect(texts).toContain('Singles');
+    expect(texts).toContain('Doubles');
+    // The old "Custom Names" checkbox is gone; names are always editable
+    expect(texts).not.toContain('Custom Names');
   });
 
   test('asks which side you are on, not who keeps score', () => {
     const texts = renderTexts();
     expect(texts).toContain('Which side are you on?');
+  });
+
+  // The label fix alone was not enough: the invented partner also travelled
+  // into the match config, and from there into the saved history.
+  test('starts an unnamed doubles match with plain side names', () => {
+    let started: MatchConfig | undefined;
+    const instance = render((config) => {
+      started = config;
+    });
+
+    const startButton = instance.root.findAll(
+      (node) => node.props.accessibilityRole === 'button' || typeof node.props.onPress === 'function'
+    );
+    // The Start Match button is the last pressable on the screen
+    act(() => {
+      startButton[startButton.length - 1].props.onPress();
+    });
+
+    expect(started).toBeDefined();
+    expect(started!.side1).toEqual({ player1: 'Side 1' });
+    expect(started!.side2).toEqual({ player1: 'Side 2' });
+    expect(getSideNames(started!, 'side1')).toBe('Side 1');
+    expect(getSideNames(started!, 'side2')).toBe('Side 2');
   });
 });

@@ -53,8 +53,8 @@ function renderTexts(config: MatchConfig): string[] {
 }
 
 describe('SettingsScreen deuce rule', () => {
-  test('offers all three rules by name, each with an explanation', () => {
-    const texts = renderTexts(baseConfig);
+  test('offers all three rules by name for padel, each with an explanation', () => {
+    const texts = renderTexts({ ...baseConfig, sport: 'padel' });
 
     expect(texts).toContain('Like in tennis');
     expect(texts).toContain('Star point');
@@ -66,5 +66,15 @@ describe('SettingsScreen deuce rule', () => {
 
     // And no unresolved i18n key should leak into the UI
     expect(texts.filter((s) => s.startsWith('ui.'))).toEqual([]);
+  });
+
+  test('hides the padel-only deuce rules for a tennis match', () => {
+    const texts = renderTexts({ ...baseConfig, sport: 'tennis' });
+
+    expect(texts).not.toContain('Star point');
+    expect(texts).not.toContain('Golden point');
+    expect(texts).not.toContain('When the score reaches 40:40');
+    // The rest of the settings are still there
+    expect(texts).toContain('Tie-Break (6:6)');
   });
 });

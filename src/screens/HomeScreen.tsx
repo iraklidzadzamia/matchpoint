@@ -8,20 +8,28 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Sport } from '../engine/types';
+import { MatchRecord } from '../engine/types';
 import { theme } from '../styles/theme';
-import { loadCurrentMatch } from '../storage/matchStorage';
+import { loadCurrentMatch, loadHistory } from '../storage/matchStorage';
+import { MatchScoreLines } from '../components/MatchScoreLines';
 import { usePortraitOrientation } from '../hooks/useOrientation';
 import { t } from '../i18n';
 
 interface HomeScreenProps {
-  onStartSetup: (sport: Sport) => void;
+  /**
+   * False while this screen is only being shown underneath another one, so it
+   * can stay mounted for the back transition and still refresh when it is the
+   * screen the user is actually on.
+   */
+  isActive: boolean;
+  onStartSetup: () => void;
   onContinueMatch: () => void;
   onOpenSettings: () => void;
   onOpenHistory: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
+  isActive,
   onStartSetup,
   onContinueMatch,
   onOpenSettings,
@@ -30,105 +38,72 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   usePortraitOrientation();
 
   const [hasSavedMatch, setHasSavedMatch] = useState(false);
-  const [selectedSport, setSelectedSport] = useState<Sport>('tennis');
+  const [history, setHistory] = useState<MatchRecord[]>([]);
 
   useEffect(() => {
-    async function checkSaved() {
-      const match = await loadCurrentMatch();
-      if (match && match.matchStatus === 'playing') {
-        setHasSavedMatch(true);
-      }
+    if (!isActive) return;
+    async function load() {
+      const [match, records] = await Promise.all([loadCurrentMatch(), loadHistory()]);
+      setHasSavedMatch(!!match && match.matchStatus === 'playing');
+      setHistory(records);
     }
-    checkSaved();
-  }, []);
+    load();
+  }, [isActive]);
+
+  const lastMatch = history[0];
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.bg.base} />
-      
-      {/* Header */}
+
       <View style={styles.header}>
         <View style={styles.logoRow}>
-          <Text style={styles.logoText}>🎾 MatchPoint</Text>
+          <Ionicons name="tennisball" size={26} color={theme.colors.accent.ball} />
+          <Text style={styles.logoText}>{t('ui.appTitle')}</Text>
         </View>
         <TouchableOpacity style={styles.settingsIconBtn} onPress={onOpenSettings}>
-          <Ionicons name="settings-outline" size={24} color={theme.colors.text.primary} />
+          <Ionicons name="settings-outline" size={22} color={theme.colors.text.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Main Content */}
       <View style={styles.content}>
-        <Text style={styles.subtitle}>Select Sport</Text>
-
-        {/* Sport Selection Cards */}
-        <View style={styles.sportCardsRow}>
-          <TouchableOpacity
-            style={[
-              styles.sportCard,
-              selectedSport === 'tennis' && styles.selectedSportCard,
-            ]}
-            onPress={() => setSelectedSport('tennis')}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="tennisball"
-              size={48}
-              color={selectedSport === 'tennis' ? theme.colors.accent.secondary : theme.colors.text.muted}
+        {lastMatch && (
+          <TouchableOpacity style={styles.lastMatchCard} onPress={onOpenHistory} activeOpacity={0.8}>
+            <View style={styles.lastMatchHeader}>
+              <Text style={styles.eyebrow}>{t('ui.lastMatch')}</Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.colors.text.muted} />
+            </View>
+            <MatchScoreLines
+              side1Name={lastMatch.side1Name}
+              side2Name={lastMatch.side2Name}
+              setScores={lastMatch.setScores}
+              winner={lastMatch.winner}
             />
-            <Text style={styles.sportTitle}>{t('ui.tennis')}</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.sportCard,
-              selectedSport === 'padel' && styles.selectedSportCard,
-            ]}
-            onPress={() => setSelectedSport('padel')}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="fitness-outline"
-              size={48}
-              color={selectedSport === 'padel' ? theme.colors.accent.primary : theme.colors.text.muted}
-            />
-            <Text style={styles.sportTitle}>{t('ui.padel')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Action Buttons */}
-        <TouchableOpacity
-          style={styles.newMatchBtn}
-          onPress={() => onStartSetup(selectedSport)}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add-circle-outline" size={24} color={theme.colors.bg.base} />
-          <Text style={styles.newMatchBtnText}>{t('ui.newMatch')}</Text>
-        </TouchableOpacity>
+        )}
 
         {hasSavedMatch && (
-          <TouchableOpacity
-            style={styles.continueBtn}
-            onPress={onContinueMatch}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="play-circle-outline" size={24} color={theme.colors.accent.primary} />
+          <TouchableOpacity style={styles.continueBtn} onPress={onContinueMatch} activeOpacity={0.85}>
+            <Ionicons name="play-circle" size={24} color={theme.colors.accent.primary} />
             <Text style={styles.continueBtnText}>{t('ui.continueMatch')}</Text>
           </TouchableOpacity>
         )}
-      </View>
 
-      {/* Footer Navigation */}
-      <View style={styles.footer}>
-        <View style={styles.activeTab}>
-          <Ionicons name="add-circle" size={20} color={theme.colors.accent.primary} />
-          <Text style={styles.activeTabText}>{t('ui.newMatch')}</Text>
-        </View>
-
-        <TouchableOpacity style={styles.inactiveTab} onPress={onOpenHistory} activeOpacity={0.7}>
-          <Ionicons name="time-outline" size={20} color={theme.colors.text.secondary} />
-          <Text style={styles.inactiveTabText}>{t('ui.history')}</Text>
+        <TouchableOpacity style={styles.newMatchBtn} onPress={onStartSetup} activeOpacity={0.85}>
+          <Ionicons name="add-circle-outline" size={24} color={theme.colors.bg.base} />
+          <Text style={styles.newMatchBtnText}>{t('ui.newMatch')}</Text>
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity style={styles.historyBar} onPress={onOpenHistory} activeOpacity={0.7}>
+        <Ionicons name="time-outline" size={19} color={theme.colors.text.secondary} />
+        <Text style={styles.historyBarText}>{t('ui.history')}</Text>
+        {history.length > 0 && (
+          <View style={styles.countPill}>
+            <Text style={styles.countText}>{history.length}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -148,6 +123,7 @@ const styles = StyleSheet.create({
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   logoText: {
     color: theme.colors.text.primary,
@@ -166,57 +142,46 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: theme.spacing.lg,
     justifyContent: 'center',
-  },
-  subtitle: {
-    color: theme.colors.text.secondary,
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: theme.spacing.md,
-    textAlign: 'center',
-  },
-  sportCardsRow: {
-    flexDirection: 'row',
     gap: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
   },
-  sportCard: {
-    flex: 1,
-    height: 160,
+  lastMatchCard: {
     backgroundColor: theme.colors.bg.surface,
     borderRadius: theme.radius.xl,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: theme.colors.glass.border,
-    justifyContent: 'center',
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  lastMatchHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.xs,
   },
-  selectedSportCard: {
-    borderColor: theme.colors.accent.primary,
-    backgroundColor: theme.colors.accent.primaryGlow,
-  },
-  sportTitle: {
-    color: theme.colors.text.primary,
-    fontSize: 18,
-    fontWeight: '700',
+  eyebrow: {
+    color: theme.colors.text.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
   newMatchBtn: {
-    height: 56,
+    height: 60,
     backgroundColor: theme.colors.accent.primary,
     borderRadius: theme.radius.lg,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    marginBottom: theme.spacing.md,
     shadowColor: theme.colors.accent.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowRadius: 12,
     elevation: 4,
   },
   newMatchBtnText: {
     color: theme.colors.bg.base,
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '800',
   },
   continueBtn: {
@@ -232,45 +197,38 @@ const styles = StyleSheet.create({
   },
   continueBtnText: {
     color: theme.colors.accent.primary,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
   },
-  footer: {
+  historyBar: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
     backgroundColor: theme.colors.bg.surface,
     borderRadius: theme.radius.full,
-    marginHorizontal: theme.spacing.xl,
-    marginBottom: theme.spacing.md,
-    padding: 4,
     borderWidth: 1,
     borderColor: theme.colors.glass.border,
   },
-  activeTab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.bg.elevated,
-    paddingVertical: 10,
-    borderRadius: theme.radius.full,
-    gap: 6,
-  },
-  activeTabText: {
-    color: theme.colors.text.primary,
-    fontSize: 14,
+  historyBarText: {
+    color: theme.colors.text.secondary,
+    fontSize: 15,
     fontWeight: '700',
   },
-  inactiveTab: {
-    flex: 1,
-    flexDirection: 'row',
+  countPill: {
+    minWidth: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.bg.elevated,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    gap: 6,
   },
-  inactiveTabText: {
-    color: theme.colors.text.secondary,
-    fontSize: 14,
-    fontWeight: '600',
+  countText: {
+    color: theme.colors.text.muted,
+    fontSize: 12,
+    fontWeight: '800',
   },
 });
