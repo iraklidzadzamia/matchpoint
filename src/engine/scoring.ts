@@ -1,4 +1,4 @@
-import { MatchConfig, MatchState, PlayerSide } from './types';
+import { MatchConfig, MatchState, PlayerSide, MatchRecord } from './types';
 
 export function createMatch(config: MatchConfig): MatchState {
   return {
@@ -48,6 +48,24 @@ export function getServingPlayerName(state: MatchState): string {
     return info.player2;
   }
   return info.player1 || (side === 'side1' ? 'Side 1' : 'Side 2');
+}
+
+export function toMatchRecord(state: MatchState): MatchRecord | null {
+  if (state.matchStatus !== 'finished' || !state.matchWinner) return null;
+
+  const endTime = state.matchEndTime ?? Date.now();
+  return {
+    id: `${state.matchStartTime}`,
+    sport: state.config.sport,
+    format: state.config.format,
+    side1Name: getSideNames(state.config, 'side1'),
+    side2Name: getSideNames(state.config, 'side2'),
+    setScores: state.completedSets.map((s) => [...s] as [number, number]),
+    setsWon: [...state.setsWon],
+    winner: state.matchWinner,
+    startedAt: state.matchStartTime,
+    durationSec: Math.max(0, Math.floor((endTime - state.matchStartTime) / 1000)),
+  };
 }
 
 export function setServingPlayer(state: MatchState, side: PlayerSide, playerIndex: 0 | 1): MatchState {

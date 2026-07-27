@@ -1,4 +1,4 @@
-import { createMatch, addPoint, getDisplayScore, getSideNames } from '../scoring';
+import { createMatch, addPoint, getDisplayScore, getSideNames, toMatchRecord } from '../scoring';
 import { MatchConfig } from '../types';
 
 describe('MatchPoint Scoring Engine', () => {
@@ -342,6 +342,26 @@ describe('MatchPoint Scoring Engine', () => {
     expect(match.serving).toBe('side1');
     for (let i = 0; i < 4; i++) match = addPoint(match, 'side1');
     expect(match.serving).toBe('side2');
+  });
+
+  test('an unfinished match produces no history record', () => {
+    const match = createMatch(defaultConfig);
+    expect(toMatchRecord(match)).toBeNull();
+  });
+
+  test('a finished match becomes a history record with its set scores', () => {
+    let match = createMatch({ ...defaultConfig, totalSets: 1 });
+    match.games = [5, 3];
+    match.points = [3, 0];
+    match = addPoint(match, 'side1'); // 6:3, wins the only set
+
+    const record = toMatchRecord(match);
+    expect(record).not.toBeNull();
+    expect(record!.winner).toBe('side1');
+    expect(record!.setScores).toEqual([[6, 3]]);
+    expect(record!.side1Name).toBe('Irakli');
+    expect(record!.side2Name).toBe('Rafael');
+    expect(record!.durationSec).toBeGreaterThanOrEqual(0);
   });
 
   test('getSideNames joins both players in doubles', () => {

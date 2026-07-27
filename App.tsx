@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Brightness from 'expo-brightness';
 import { Sport, MatchConfig, PlayerSide, AppSettings } from './src/engine/types';
 import {
@@ -16,11 +17,12 @@ import { MatchSetupScreen } from './src/screens/MatchSetupScreen';
 import { ScoreScreen } from './src/screens/ScoreScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { MatchSummaryScreen } from './src/screens/MatchSummaryScreen';
+import { HistoryScreen } from './src/screens/HistoryScreen';
 import { liveCrowd } from './src/audio/liveCrowd';
 import { scoreAnnouncer } from './src/audio/scoreAnnouncer';
 import { soundEffects } from './src/audio/soundEffects';
 
-type Screen = 'home' | 'setup' | 'score' | 'summary';
+type Screen = 'home' | 'setup' | 'score' | 'summary' | 'history';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -128,13 +130,19 @@ export default function App() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaProvider>
+      <View style={styles.container}>
       {currentScreen === 'home' && (
         <HomeScreen
           onStartSetup={handleStartSetup}
           onContinueMatch={handleContinueMatch}
           onOpenSettings={() => setSettingsVisible(true)}
+          onOpenHistory={() => setCurrentScreen('history')}
         />
+      )}
+
+      {currentScreen === 'history' && (
+        <HistoryScreen onBack={() => setCurrentScreen('home')} />
       )}
 
       {currentScreen === 'setup' && (
@@ -180,7 +188,8 @@ export default function App() {
         onUpdateConfig={handleUpdateConfig}
         onUpdateAppSettings={handleUpdateAppSettings}
       />
-    </View>
+      </View>
+    </SafeAreaProvider>
   );
 }
 

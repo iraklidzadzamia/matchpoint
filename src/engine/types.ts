@@ -26,6 +26,21 @@ export interface MatchConfig {
   scoreKeeper: PlayerSide;
 }
 
+// A finished match, flattened to just what the history list needs — keeping
+// whole MatchState objects around would bloat storage for no benefit.
+export interface MatchRecord {
+  id: string;
+  sport: Sport;
+  format: MatchFormat;
+  side1Name: string;
+  side2Name: string;
+  setScores: [number, number][];
+  setsWon: [number, number];
+  winner: PlayerSide;
+  startedAt: number;
+  durationSec: number;
+}
+
 export interface AppSettings {
   voiceAnnounce: boolean;
   liveCrowd: boolean;

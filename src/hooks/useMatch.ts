@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { MatchState, MatchConfig, PlayerSide } from '../engine/types';
-import { createMatch, addPoint, setServingPlayer } from '../engine/scoring';
+import { createMatch, addPoint, setServingPlayer, toMatchRecord } from '../engine/scoring';
 import { MatchHistoryStack } from '../engine/history';
 import {
   saveCurrentMatch,
   loadCurrentMatch,
   saveUndoStack,
   loadUndoStack,
+  appendToHistory,
 } from '../storage/matchStorage';
 import { audioQueue } from '../audio/audioQueue';
 
@@ -45,6 +46,13 @@ export function useMatch() {
     historyRef.current.push(matchState);
     const nextState = addPoint(matchState, winner);
     await commit(nextState);
+
+    // This point ended the match — the guard above means it was still running.
+    if (nextState.matchStatus === 'finished') {
+      const record = toMatchRecord(nextState);
+      if (record) await appendToHistory(record);
+    }
+
     await audioQueue.handlePointEvent(nextState);
   };
 

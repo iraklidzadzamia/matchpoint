@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Sport } from '../engine/types';
 import { theme } from '../styles/theme';
@@ -18,12 +18,14 @@ interface HomeScreenProps {
   onStartSetup: (sport: Sport) => void;
   onContinueMatch: () => void;
   onOpenSettings: () => void;
+  onOpenHistory: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   onStartSetup,
   onContinueMatch,
   onOpenSettings,
+  onOpenHistory,
 }) => {
   usePortraitOrientation();
 
@@ -122,10 +124,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <Text style={styles.activeTabText}>{t('ui.newMatch')}</Text>
         </View>
 
-        <View style={styles.disabledTab}>
-          <Ionicons name="time-outline" size={20} color={theme.colors.text.muted} />
-          <Text style={styles.disabledTabText}>{t('ui.history')}</Text>
-        </View>
+        <TouchableOpacity style={styles.inactiveTab} onPress={onOpenHistory} activeOpacity={0.7}>
+          <Ionicons name="time-outline" size={20} color={theme.colors.text.secondary} />
+          <Text style={styles.inactiveTabText}>{t('ui.history')}</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -258,17 +260,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  disabledTab: {
+  inactiveTab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    opacity: 0.5,
     gap: 6,
   },
-  disabledTabText: {
-    color: theme.colors.text.muted,
+  inactiveTabText: {
+    color: theme.colors.text.secondary,
     fontSize: 14,
     fontWeight: '600',
   },

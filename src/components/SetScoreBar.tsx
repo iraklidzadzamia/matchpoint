@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { MatchState } from '../engine/types';
 import { getSideNames } from '../engine/scoring';
 import { theme } from '../styles/theme';
+import { t } from '../i18n';
 
 interface SetScoreBarProps {
   state: MatchState;
@@ -46,6 +47,11 @@ export const SetScoreBar: React.FC<SetScoreBarProps> = ({ state, onPressPlayers 
             {leftName}
           </Text>
         </View>
+        {state.config.scoreKeeper === leftSide && (
+          <View style={styles.youBadge}>
+            <Text style={styles.youText}>{t('ui.you')}</Text>
+          </View>
+        )}
       </View>
 
       {/* Set Score Matrix */}
@@ -70,6 +76,11 @@ export const SetScoreBar: React.FC<SetScoreBarProps> = ({ state, onPressPlayers 
 
       {/* Right Side Info */}
       <View style={styles.sideGroup}>
+        {state.config.scoreKeeper === rightSide && (
+          <View style={styles.youBadge}>
+            <Text style={styles.youText}>{t('ui.you')}</Text>
+          </View>
+        )}
         <View style={[styles.nameBadge, !isLeftServing ? styles.nameBadgeServing : null]}>
           <Text style={styles.nameText} numberOfLines={1}>
             {rightName}
@@ -129,6 +140,20 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     fontSize: 14,
     fontWeight: '700',
+  },
+  youBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.glass.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.glass.border,
+  },
+  youText: {
+    color: theme.colors.text.secondary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   scoreMatrix: {
     flexDirection: 'row',

@@ -62,6 +62,19 @@ describe('SetScoreBar', () => {
     expect(texts.indexOf('1')).toBeLessThan(texts.indexOf('3'));
   });
 
+  test('marks the scorekeeper side with a YOU badge, following the court swap', () => {
+    const state = { ...createMatch({ ...config, scoreKeeper: 'side1' }), games: [0, 0] as [number, number] };
+    const texts = renderTexts(state);
+    expect(texts).toContain('YOU');
+    // Side 1 is on the left, so the badge sits before the opponent's name
+    expect(texts.indexOf('YOU')).toBeLessThan(texts.indexOf('Rafael'));
+
+    const swapped = { ...state, courtSide: 'swapped' as const };
+    const swappedTexts = renderTexts(swapped);
+    // Side 1 moved right, so its badge follows and now comes after Rafael
+    expect(swappedTexts.indexOf('YOU')).toBeGreaterThan(swappedTexts.indexOf('Rafael'));
+  });
+
   test('mirrors completed set scores too', () => {
     const state: MatchState = {
       ...createMatch(config),

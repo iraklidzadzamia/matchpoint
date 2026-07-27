@@ -1,10 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MatchState, MatchConfig, AppSettings } from '../engine/types';
+import { MatchState, MatchConfig, AppSettings, MatchRecord } from '../engine/types';
 
 const MATCH_KEY = '@matchpoint_current_match';
 const SETTINGS_KEY = '@matchpoint_settings';
 const APP_SETTINGS_KEY = '@matchpoint_app_settings';
 const UNDO_KEY = '@matchpoint_undo_stack';
+const HISTORY_KEY = '@matchpoint_history';
+
+// Each record is well under a kilobyte, so even a few thousand matches stay
+// small enough for AsyncStorage; the cap just keeps the list bounded.
+const HISTORY_LIMIT = 500;
 
 export const defaultAppSettings: AppSettings = {
   voiceAnnounce: true,
@@ -87,6 +92,36 @@ export async function loadAppSettings(): Promise<AppSettings> {
   } catch (err) {
     console.warn('Load app settings error:', err);
     return defaultAppSettings;
+  }
+}
+
+export async function loadHistory(): Promise<MatchRecord[]> {
+  try {
+    const raw = await AsyncStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as MatchRecord[];
+  } catch (err) {
+    console.warn('Load history error:', err);
+    return [];
+  }
+}
+
+export async function appendToHistory(record: MatchRecord): Promise<void> {
+  try {
+    const existing = await loadHistory();
+    // Newest first, so the list needs no sorting when rendered.
+    const next = [record, ...existing].slice(0, HISTORY_LIMIT);
+    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  } catch (err) {
+    console.warn('Append history error:', err);
+  }
+}
+
+export async function clearHistory(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(HISTORY_KEY);
+  } catch (err) {
+    console.warn('Clear history error:', err);
   }
 }
 
