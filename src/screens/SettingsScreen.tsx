@@ -1,0 +1,366 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  Modal,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Switch,
+} from 'react-native';
+import { MatchConfig, SwapSidesRule, AppSettings } from '../engine/types';
+import { theme } from '../styles/theme';
+import { t } from '../i18n';
+
+interface SettingsScreenProps {
+  visible: boolean;
+  config: MatchConfig;
+  appSettings: AppSettings;
+  onClose: () => void;
+  onUpdateConfig: (updated: Partial<MatchConfig>) => void;
+  onUpdateAppSettings: (updated: Partial<AppSettings>) => void;
+}
+
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({
+  visible,
+  config,
+  appSettings,
+  onClose,
+  onUpdateConfig,
+  onUpdateAppSettings,
+}) => {
+  const [goldenPoint, setGoldenPoint] = useState(config.goldenPointEnabled);
+  const [advCount, setAdvCount] = useState<0 | 1 | 2>(config.advantagesBeforeGolden);
+  const [tieBreak, setTieBreak] = useState(config.tieBreakEnabled);
+  const [matchTieBreak, setMatchTieBreak] = useState(config.matchTieBreakEnabled);
+  const [swapSides, setSwapSides] = useState<SwapSidesRule>(config.swapSides);
+  const [totalSets, setTotalSets] = useState<1 | 3 | 5>(config.totalSets);
+
+  // Re-sync the form each time the sheet opens; the config can have changed
+  // (new match started, rules edited) while this component stayed mounted.
+  useEffect(() => {
+    if (!visible) return;
+    setGoldenPoint(config.goldenPointEnabled);
+    setAdvCount(config.advantagesBeforeGolden);
+    setTieBreak(config.tieBreakEnabled);
+    setMatchTieBreak(config.matchTieBreakEnabled);
+    setSwapSides(config.swapSides);
+    setTotalSets(config.totalSets);
+  }, [visible, config]);
+
+  const handleDone = () => {
+    onUpdateConfig({
+      goldenPointEnabled: goldenPoint,
+      advantagesBeforeGolden: advCount,
+      tieBreakEnabled: tieBreak,
+      matchTieBreakEnabled: matchTieBreak,
+      swapSides,
+      totalSets,
+    });
+    onClose();
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{t('ui.settings')}</Text>
+          <TouchableOpacity style={styles.doneBtn} onPress={handleDone}>
+            <Text style={styles.doneBtnText}>{t('ui.done')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* Game Rules Section */}
+          <Text style={styles.sectionHeader}>Game Settings</Text>
+          <View style={styles.cardGroup}>
+            {/* Golden Point Toggle */}
+            <View style={styles.row}>
+              <View style={styles.labelCol}>
+                <Text style={styles.rowLabel}>{t('ui.goldenPoint')}</Text>
+                <Text style={styles.rowSubLabel}>Deciding point at 40:40</Text>
+              </View>
+              <Switch
+                value={goldenPoint}
+                onValueChange={setGoldenPoint}
+                trackColor={{ false: theme.colors.bg.surface, true: theme.colors.accent.primary }}
+              />
+            </View>
+
+            {/* Advantages before Golden Point */}
+            {goldenPoint && (
+              <View style={styles.rowSubSection}>
+                <Text style={styles.rowLabel}>{t('ui.advantagesBeforeGolden')}</Text>
+                <View style={styles.segmentedRow}>
+                  {([0, 1, 2] as const).map((num) => (
+                    <TouchableOpacity
+                      key={num}
+                      style={[
+                        styles.segmentBtn,
+                        advCount === num && styles.segmentBtnActive,
+                      ]}
+                      onPress={() => setAdvCount(num)}
+                    >
+                      <Text
+                        style={[
+                          styles.segmentBtnText,
+                          advCount === num && styles.segmentBtnTextActive,
+                        ]}
+                      >
+                        {num}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Tie-Break Toggle */}
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>{t('ui.tieBreak')}</Text>
+              <Switch
+                value={tieBreak}
+                onValueChange={setTieBreak}
+                trackColor={{ false: theme.colors.bg.surface, true: theme.colors.accent.primary }}
+              />
+            </View>
+
+            {/* Match Tie-Break */}
+            <View style={styles.row}>
+              <View style={styles.labelCol}>
+                <Text style={styles.rowLabel}>{t('ui.matchTieBreak')}</Text>
+                <Text style={styles.rowSubLabel}>Super tie-break to 10 in final set</Text>
+              </View>
+              <Switch
+                value={matchTieBreak}
+                onValueChange={setMatchTieBreak}
+                trackColor={{ false: theme.colors.bg.surface, true: theme.colors.accent.primary }}
+              />
+            </View>
+
+            {/* Swap Sides Rule */}
+            <View style={styles.rowSubSection}>
+              <Text style={styles.rowLabel}>Swap Sides</Text>
+              <View style={styles.segmentedRow}>
+                {(['off', 'oddGames', 'everySet'] as const).map((rule) => {
+                  const labels = { off: 'Off', oddGames: 'Odd Games', everySet: 'Every Set' };
+                  return (
+                    <TouchableOpacity
+                      key={rule}
+                      style={[
+                        styles.segmentBtn,
+                        swapSides === rule && styles.segmentBtnActive,
+                      ]}
+                      onPress={() => setSwapSides(rule)}
+                    >
+                      <Text
+                        style={[
+                          styles.segmentBtnText,
+                          swapSides === rule && styles.segmentBtnTextActive,
+                        ]}
+                      >
+                        {labels[rule]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Sets in Match Stepper */}
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>{t('ui.setsInMatch')}</Text>
+              <View style={styles.stepperRow}>
+                {([1, 3, 5] as const).map((val) => (
+                  <TouchableOpacity
+                    key={val}
+                    style={[
+                      styles.stepperBtn,
+                      totalSets === val && styles.stepperBtnActive,
+                    ]}
+                    onPress={() => setTotalSets(val)}
+                  >
+                    <Text
+                      style={[
+                        styles.stepperText,
+                        totalSets === val && styles.stepperTextActive,
+                      ]}
+                    >
+                      {val}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          {/* Display & Sound Section */}
+          <Text style={styles.sectionHeader}>Display & Sound</Text>
+          <View style={styles.cardGroup}>
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>{t('ui.maxBrightness')}</Text>
+              <Switch
+                value={appSettings.maxBrightness}
+                onValueChange={(v) => onUpdateAppSettings({ maxBrightness: v })}
+                trackColor={{ false: theme.colors.bg.surface, true: theme.colors.accent.primary }}
+              />
+            </View>
+
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>{t('ui.scoreAnnouncements')}</Text>
+              <Switch
+                value={appSettings.voiceAnnounce}
+                onValueChange={(v) => onUpdateAppSettings({ voiceAnnounce: v })}
+                trackColor={{ false: theme.colors.bg.surface, true: theme.colors.accent.primary }}
+              />
+            </View>
+
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>{t('ui.liveCrowd')}</Text>
+              <Switch
+                value={appSettings.liveCrowd}
+                onValueChange={(v) => onUpdateAppSettings({ liveCrowd: v })}
+                trackColor={{ false: theme.colors.bg.surface, true: theme.colors.accent.primary }}
+              />
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.bg.base,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.glass.border,
+  },
+  headerTitle: {
+    color: theme.colors.text.primary,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  doneBtn: {
+    backgroundColor: theme.colors.accent.primary,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 8,
+    borderRadius: theme.radius.full,
+  },
+  doneBtnText: {
+    color: theme.colors.bg.base,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  scrollContent: {
+    padding: theme.spacing.lg,
+  },
+  sectionHeader: {
+    color: theme.colors.text.secondary,
+    fontSize: 14,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: theme.spacing.xs,
+    marginTop: theme.spacing.md,
+  },
+  cardGroup: {
+    backgroundColor: theme.colors.bg.surface,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.glass.border,
+    paddingHorizontal: theme.spacing.md,
+    overflow: 'hidden',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.glass.border,
+  },
+  labelCol: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  rowLabel: {
+    color: theme.colors.text.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  rowSubLabel: {
+    color: theme.colors.text.secondary,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  rowSubSection: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.glass.border,
+  },
+  segmentedRow: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.bg.elevated,
+    borderRadius: theme.radius.md,
+    padding: 3,
+    marginTop: 8,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: theme.radius.sm,
+  },
+  segmentBtnActive: {
+    backgroundColor: theme.colors.accent.primary,
+  },
+  segmentBtnText: {
+    color: theme.colors.text.secondary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  segmentBtnTextActive: {
+    color: theme.colors.bg.base,
+    fontWeight: '700',
+  },
+  stepperRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  stepperBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.bg.elevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.glass.border,
+  },
+  stepperBtnActive: {
+    backgroundColor: theme.colors.accent.primary,
+    borderColor: theme.colors.accent.primary,
+  },
+  stepperText: {
+    color: theme.colors.text.primary,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  stepperTextActive: {
+    color: theme.colors.bg.base,
+  },
+});
