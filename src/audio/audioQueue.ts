@@ -4,11 +4,14 @@ import { scoreAnnouncer } from './scoreAnnouncer';
 import { soundEffects } from './soundEffects';
 import * as Haptics from 'expo-haptics';
 
-// The tick is immediate feedback; the score follows once the tick has cleared,
-// and the crowd only reacts after the score has been read out.
-const TICK_DELAY = 50;
-const SPEECH_DELAY = 420;
-const APPLAUSE_DELAY = { game: 1600, set: 1900, match: 2100 };
+// The tick is immediate feedback and runs 160ms. The score is left a clear
+// half-second behind it: the two go through different iOS subsystems
+// (AVAudioPlayer and AVSpeechSynthesizer) sharing one session, and starting
+// speech close to a sound effect was getting it cut short.
+const TICK_DELAY = 0;
+const TICK_LENGTH = 170;
+const SPEECH_DELAY = TICK_LENGTH + 530;
+const APPLAUSE_DELAY = { game: 1900, set: 2200, match: 2400 };
 
 /**
  * Owns everything the app plays, and — importantly — everything it has queued

@@ -15,6 +15,13 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const QUALITY_RANK: Record<string, number> = { Enhanced: 2, Default: 0 };
 const PREFERRED_LANGUAGES = ['en-GB', 'en-AU', 'en-US'];
 
+const VOICE_SETTINGS = (voice: string | undefined): Speech.SpeechOptions => ({
+  language: 'en-GB',
+  pitch: 0.98,
+  rate: 0.88, // Classic tennis umpire cadence: unhurried and even
+  voice,
+});
+
 function scoreVoice(voice: Speech.Voice): number {
   const langIndex = PREFERRED_LANGUAGES.indexOf(voice.language);
   if (langIndex === -1) return -1;
@@ -87,12 +94,7 @@ class ScoreAnnouncer {
       // A newer score arrived, or the voice was muted, while we waited.
       if (mine !== this.sequence || !this.enabled) return;
 
-      Speech.speak(text, {
-        language: 'en-GB',
-        pitch: 0.98,
-        rate: 0.88, // Classic tennis umpire cadence: unhurried and even
-        voice: this.voice,
-      });
+      Speech.speak(text, VOICE_SETTINGS(this.voice));
     } catch (err) {
       console.warn('Speech announcement error:', err);
     }
@@ -103,12 +105,7 @@ class ScoreAnnouncer {
       this.sequence += 1;
       await Speech.stop();
       await this.waitUntilIdle();
-      Speech.speak(`Game, ${name}`, {
-        language: 'en-US',
-        pitch: 1.0,
-        rate: 0.92,
-        voice: this.voice,
-      });
+      Speech.speak(`Game, ${name}`, VOICE_SETTINGS(this.voice));
     } catch (err) {
       console.warn('Test voice error:', err);
     }

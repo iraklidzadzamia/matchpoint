@@ -67,14 +67,18 @@ afterEach(() => {
 });
 
 describe('audioQueue scheduling', () => {
-  test('a point ticks, then speaks the score', async () => {
+  test('the tick lands first and the score is left clear of it', async () => {
     await audioQueue.handlePointEvent(pointState());
 
-    jest.advanceTimersByTime(100);
+    jest.advanceTimersByTime(10);
     expect(sfx.playPointPop).toHaveBeenCalledTimes(1);
+
+    // The 170ms tick must have finished well before the score is spoken —
+    // overlapping the two is what was cutting announcements short.
+    jest.advanceTimersByTime(400);
     expect(announcer.announce).not.toHaveBeenCalled();
 
-    jest.advanceTimersByTime(500);
+    jest.advanceTimersByTime(400);
     expect(announcer.announce).toHaveBeenCalledTimes(1);
   });
 
