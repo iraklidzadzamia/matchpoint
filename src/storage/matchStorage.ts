@@ -26,7 +26,9 @@ export const defaultMatchConfig: MatchConfig = {
   tieBreakTo: 7,
   goldenPointEnabled: false,
   advantagesBeforeGolden: 1,
-  swapSides: 'oddGames',
+  // Players really do change ends on odd games, but the person holding the
+  // phone does not — auto-flipping moves the tap zones mid-match.
+  swapSides: 'off',
   side1: { player1: 'Side 1' },
   side2: { player1: 'Side 2' },
   servingFirst: 'side1',

@@ -152,8 +152,9 @@ export function addPoint(state: MatchState, winner: PlayerSide): MatchState {
       }
     }
 
-    // Court sides swap every 6 points scored in the tie-break.
-    if (totalPoints > 0 && totalPoints % 6 === 0) {
+    // Court sides swap every 6 points scored in the tie-break — but only if
+    // the user asked the screen to mirror ends at all.
+    if (newState.config.swapSides !== 'off' && totalPoints > 0 && totalPoints % 6 === 0) {
       newState.courtSide = newState.courtSide === 'original' ? 'swapped' : 'original';
     }
 

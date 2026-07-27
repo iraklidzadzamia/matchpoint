@@ -11,6 +11,8 @@ export const theme = {
       primaryGlow: 'rgba(0, 229, 154, 0.2)',
       secondary: '#FF8C42',       // Warm Amber (Tennis ball accent)
       violet: '#7C5CFC',          // Electric Violet
+      ball: '#D6F23C',            // Optic yellow, readable from across a court
+      ballGlow: 'rgba(214, 242, 60, 0.16)',
     },
     side1: {
       base: '#4DA3FF',            // Deep Sky Blue

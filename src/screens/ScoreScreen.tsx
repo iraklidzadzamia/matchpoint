@@ -119,6 +119,8 @@ export const ScoreScreen: React.FC<ScoreScreenProps> = ({
         <PlayerZone
           side={leftSide}
           score={leftScore}
+          isServing={matchState.serving === leftSide}
+          align="left"
           onTap={handlePointTap}
           showTapHint={tapCount < 3}
         />
@@ -128,6 +130,8 @@ export const ScoreScreen: React.FC<ScoreScreenProps> = ({
         <PlayerZone
           side={rightSide}
           score={rightScore}
+          isServing={matchState.serving === rightSide}
+          align="right"
           onTap={handlePointTap}
           showTapHint={tapCount < 3}
         />
@@ -155,19 +159,22 @@ export const ScoreScreen: React.FC<ScoreScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Center Game Point Log History */}
-        <View style={styles.centerHistory}>
-          {recentHistory.map((item, idx) => (
-            <Text key={idx} style={styles.historyLogText}>
-              {item}
-            </Text>
-          ))}
+        {/* Match clock, with the points of the current game beside it */}
+        <View style={styles.centerGroup}>
+          <Text style={styles.timerText}>{formatTimer(elapsedSeconds)}</Text>
+          {recentHistory.length > 0 && (
+            <View style={styles.historyRow}>
+              {recentHistory.map((item, idx) => (
+                <Text key={idx} style={styles.historyLogText}>
+                  {item}
+                </Text>
+              ))}
+            </View>
+          )}
         </View>
 
-        {/* Right Bottom Actions & Timer */}
+        {/* Right Bottom Actions */}
         <View style={styles.rightControls}>
-          <Text style={styles.timerText}>{formatTimer(elapsedSeconds)}</Text>
-
           <UndoButton onPress={onUndo} disabled={!canUndo} />
 
           <TouchableOpacity style={styles.iconControlBtn} onPress={onToggleSound}>
@@ -222,6 +229,7 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.glass.border,
   },
   leftControls: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -242,25 +250,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  centerHistory: {
+  // Fixed width so the clock keeps its place no matter how many points the
+  // current game has racked up.
+  centerGroup: {
+    width: 210,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  historyRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 1,
+  },
   historyLogText: {
-    color: theme.colors.text.secondary,
-    fontSize: 11,
+    color: theme.colors.text.muted,
+    fontSize: 12,
     fontWeight: '600',
-    lineHeight: 14,
+    fontVariant: ['tabular-nums'],
   },
   rightControls: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: 12,
   },
   timerText: {
-    color: theme.colors.text.secondary,
-    fontSize: 13,
-    fontWeight: '600',
+    color: theme.colors.text.primary,
+    fontSize: 20,
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
   iconControlBtn: {

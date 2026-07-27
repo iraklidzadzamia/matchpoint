@@ -147,7 +147,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
             {/* Swap Sides Rule */}
             <View style={styles.rowSubSection}>
-              <Text style={styles.rowLabel}>Swap Sides</Text>
+              <Text style={styles.rowLabel}>{t('ui.autoSwapSides')}</Text>
+              <Text style={styles.rowSubLabel}>{t('ui.autoSwapSidesHint')}</Text>
               <View style={styles.segmentedRow}>
                 {(['off', 'oddGames', 'everySet'] as const).map((rule) => {
                   const labels = { off: 'Off', oddGames: 'Odd Games', everySet: 'Every Set' };

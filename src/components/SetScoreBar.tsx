@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { MatchState } from '../engine/types';
 import { getSideNames } from '../engine/scoring';
 import { theme } from '../styles/theme';
@@ -37,16 +36,14 @@ export const SetScoreBar: React.FC<SetScoreBarProps> = ({ state, onPressPlayers 
     >
       {/* Left Side Info */}
       <View style={styles.sideGroup}>
-        {isLeftServing && (
-          <View style={styles.serveBadge}>
-            <Ionicons name="radio-outline" size={14} color={theme.colors.accent.primary} />
-          </View>
-        )}
-        <View style={[styles.nameBadge, isLeftServing ? styles.nameBadgeServing : null]}>
-          <Text style={styles.nameText} numberOfLines={1}>
-            {leftName}
-          </Text>
-        </View>
+        <Text
+          style={[styles.nameText, isLeftServing && styles.nameTextServing]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
+        >
+          {leftName}
+        </Text>
         {state.config.scoreKeeper === leftSide && (
           <View style={styles.youBadge}>
             <Text style={styles.youText}>{t('ui.you')}</Text>
@@ -75,22 +72,20 @@ export const SetScoreBar: React.FC<SetScoreBarProps> = ({ state, onPressPlayers 
       </View>
 
       {/* Right Side Info */}
-      <View style={styles.sideGroup}>
+      <View style={[styles.sideGroup, styles.sideGroupRight]}>
         {state.config.scoreKeeper === rightSide && (
           <View style={styles.youBadge}>
             <Text style={styles.youText}>{t('ui.you')}</Text>
           </View>
         )}
-        <View style={[styles.nameBadge, !isLeftServing ? styles.nameBadgeServing : null]}>
-          <Text style={styles.nameText} numberOfLines={1}>
-            {rightName}
-          </Text>
-        </View>
-        {!isLeftServing && (
-          <View style={styles.serveBadge}>
-            <Ionicons name="radio-outline" size={14} color={theme.colors.accent.primary} />
-          </View>
-        )}
+        <Text
+          style={[styles.nameText, styles.nameTextRight, !isLeftServing && styles.nameTextServing]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
+        >
+          {rightName}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -100,46 +95,38 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: theme.colors.glass.bg,
     borderColor: theme.colors.glass.border,
     borderWidth: 1,
-    borderRadius: theme.radius.full,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 6,
+    borderRadius: theme.radius.lg,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: 8,
     marginHorizontal: theme.spacing.md,
     marginTop: theme.spacing.xs,
   },
   sideGroup: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    maxWidth: '35%',
+    gap: 8,
   },
-  serveBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: theme.colors.accent.primaryGlow,
-    justifyContent: 'center',
-    alignItems: 'center',
+  sideGroupRight: {
+    justifyContent: 'flex-end',
   },
-  nameBadge: {
-    backgroundColor: theme.colors.bg.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: theme.radius.full,
-    borderWidth: 1,
-    borderColor: theme.colors.glass.border,
-  },
-  nameBadgeServing: {
-    borderColor: theme.colors.accent.primary,
-    backgroundColor: theme.colors.accent.primaryGlow,
-  },
+  // Sized for the common case; adjustsFontSizeToFit shrinks long pair names
+  // rather than truncating them.
   nameText: {
+    flexShrink: 1,
     color: theme.colors.text.primary,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  nameTextRight: {
+    textAlign: 'right',
+  },
+  nameTextServing: {
+    color: theme.colors.accent.ball,
   },
   youBadge: {
     paddingHorizontal: 7,
@@ -158,35 +145,41 @@ const styles = StyleSheet.create({
   scoreMatrix: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
-    paddingHorizontal: 8,
+    paddingHorizontal: theme.spacing.md,
   },
+  // Finished sets stay small; the set being played is the one you glance at.
   setColumn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    opacity: 0.6,
+    opacity: 0.55,
   },
   currentSetColumn: {
     opacity: 1,
+    gap: 8,
+    paddingHorizontal: 4,
     borderBottomWidth: 2,
     borderBottomColor: theme.colors.accent.primary,
   },
   setScoreText: {
     color: theme.colors.text.primary,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
-    minWidth: 12,
+    minWidth: 13,
     textAlign: 'center',
+    fontVariant: ['tabular-nums'],
   },
   setScoreDash: {
     color: theme.colors.text.secondary,
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: '700',
   },
   currentSetScoreText: {
     color: theme.colors.accent.primary,
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 34,
+    fontWeight: '900',
+    lineHeight: 38,
   },
 });

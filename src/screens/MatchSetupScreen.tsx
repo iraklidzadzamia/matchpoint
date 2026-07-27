@@ -77,12 +77,17 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
   };
 
   const getSideLabel = (side: PlayerSide) => {
-    if (side === 'side1') {
-      const p1 = resolvedNames.s1p1 || 'Side 1';
-      return isSingles ? p1 : `${p1} & ${resolvedNames.s1p2 || 'Player 2'}`;
-    }
-    const p1 = resolvedNames.s2p1 || 'Side 2';
-    return isSingles ? p1 : `${p1} & ${resolvedNames.s2p2 || 'Player 2'}`;
+    const [p1, p2] =
+      side === 'side1'
+        ? [resolvedNames.s1p1, resolvedNames.s1p2]
+        : [resolvedNames.s2p1, resolvedNames.s2p2];
+    const fallback = side === 'side1' ? 'Side 1' : 'Side 2';
+
+    if (isSingles) return p1 || fallback;
+    // With no names entered, "Side 1" beats stitching together a half-real
+    // pair like "Side 1 & Player 2".
+    if (!p1 && !p2) return fallback;
+    return `${p1 || 'Player 1'} & ${p2 || 'Player 2'}`;
   };
 
   return (

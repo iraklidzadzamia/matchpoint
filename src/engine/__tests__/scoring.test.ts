@@ -255,6 +255,24 @@ describe('MatchPoint Scoring Engine', () => {
     expect(match.courtSide).toBe('original'); // 12th point
   });
 
+  test('with auto-swap off the tie-break leaves the court sides alone', () => {
+    let match = createMatch({ ...defaultConfig, swapSides: 'off' });
+    match.games = [6, 6];
+    match.isTieBreak = true;
+
+    for (let i = 0; i < 12; i++) match = addPoint(match, i % 2 === 0 ? 'side1' : 'side2');
+    expect(match.courtSide).toBe('original');
+  });
+
+  test('with auto-swap off winning games never moves the sides', () => {
+    let match = createMatch({ ...defaultConfig, swapSides: 'off' });
+    for (let game = 0; game < 3; game++) {
+      for (let i = 0; i < 4; i++) match = addPoint(match, 'side1');
+    }
+    expect(match.games).toEqual([3, 0]);
+    expect(match.courtSide).toBe('original');
+  });
+
   test('set point flag is set when one point from the set', () => {
     let match = createMatch(defaultConfig);
     match.games = [5, 4];

@@ -6,12 +6,17 @@ import {
   Animated,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { PlayerSide } from '../engine/types';
 import { theme } from '../styles/theme';
+import { t } from '../i18n';
 
 interface PlayerZoneProps {
   side: PlayerSide;
   score: string;
+  isServing: boolean;
+  /** Which half of the screen this zone occupies, so the ball can sit on the outer edge. */
+  align: 'left' | 'right';
   onTap: (side: PlayerSide) => void;
   showTapHint?: boolean;
 }
@@ -19,6 +24,8 @@ interface PlayerZoneProps {
 export const PlayerZone: React.FC<PlayerZoneProps> = ({
   side,
   score,
+  isServing,
+  align,
   onTap,
   showTapHint = false,
 }) => {
@@ -57,14 +64,24 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
       activeOpacity={0.9}
     >
       <Animated.View style={[styles.flashOverlay, { backgroundColor: flashBg }]} />
-      
-      <Text style={styles.scoreText}>
-        {score}
-      </Text>
+
+      {/* The ball rides the outer top corner of the number, so it reads in the
+          same glance as the score and never overlaps the centre divider. */}
+      <View style={styles.scoreWrap}>
+        <Text style={styles.scoreText} numberOfLines={1} adjustsFontSizeToFit>
+          {score}
+        </Text>
+        {isServing && (
+          <View style={[styles.ballBadge, align === 'left' ? styles.ballLeft : styles.ballRight]}>
+            <Ionicons name="tennisball" size={46} color={theme.colors.accent.ball} />
+          </View>
+        )}
+      </View>
 
       {showTapHint && (
         <View style={styles.hintContainer}>
-          <Text style={styles.hintText}>Tap here to score</Text>
+          <Ionicons name="hand-left-outline" size={14} color={theme.colors.text.secondary} />
+          <Text style={styles.hintText}>{t('ui.tapToScore')}</Text>
         </View>
       )}
     </TouchableOpacity>
@@ -83,28 +100,51 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: theme.radius.lg,
   },
+  scoreWrap: {
+    position: 'relative',
+  },
+  ballBadge: {
+    position: 'absolute',
+    top: 4,
+  },
+  ballLeft: {
+    left: -34,
+  },
+  ballRight: {
+    right: -34,
+  },
   scoreText: {
-    fontSize: 110,
+    // adjustsFontSizeToFit shrinks this when the value is wide, so it can be
+    // sized for the common single digit rather than the worst case.
+    fontSize: 190,
+    lineHeight: 200,
     fontWeight: '900',
     color: theme.colors.text.primary,
-    letterSpacing: -2,
+    letterSpacing: -4,
     includeFontPadding: false,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowOffset: { width: 0, height: 4 },
     textShadowRadius: 10,
   },
+  // Sits below the number rather than over it, so the score is never covered.
   hintContainer: {
     position: 'absolute',
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 8,
-    borderRadius: theme.radius.md,
+    bottom: '14%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.colors.glass.bg,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: theme.radius.full,
     borderWidth: 1,
     borderColor: theme.colors.glass.border,
   },
   hintText: {
-    color: theme.colors.text.primary,
-    fontSize: 14,
-    fontWeight: '600',
+    color: theme.colors.text.secondary,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
 });

@@ -31,6 +31,8 @@ export const en = {
     done: 'Done',
     playersAndServing: 'Players & Serving',
     swapSides: 'Swap Sides',
+    autoSwapSides: 'Flip the screen automatically',
+    autoSwapSidesHint: 'Mirrors the layout when players change ends. Off keeps each side in place, so the tap zones never move — you can always flip by hand with Swap Sides.',
     whoKeepsScore: 'Which side are you on?',
     you: 'YOU',
     whoServesFirst: 'Who serves first?',
