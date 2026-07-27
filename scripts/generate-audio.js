@@ -2,8 +2,8 @@
 /**
  * Generates the app's sound effects as WAV files.
  *
- * Synthesised rather than sampled so the files are ours outright, with no
- * licensing to track, and so each sound can be tuned to the moment it marks.
+ * Only the short interaction ticks: the applause is a real recording that
+ * lives in assets/audio and is not generated here.
  */
 const fs = require('fs');
 const path = require('path');
@@ -152,109 +152,6 @@ function writeWav(name, channels) {
 
 // ------------------------------------------------------------ sound sources
 
-/**
- * One handclap: a very fast noise transient with a body resonance. Randomising
- * brightness and length per clap is what stops a crowd sounding like a machine.
- */
-function clap(rng) {
-  const durMs = rndRange(rng, 26, 52);
-  const n = Math.floor((durMs / 1000) * SR);
-  const centre = rndRange(rng, 1150, 2600);
-  const bp = biquad('bandpass', centre, rndRange(rng, 0.7, 1.3));
-  const hp = biquad('highpass', 420, 0.7);
-  const out = new Float64Array(n);
-
-  for (let i = 0; i < n; i++) {
-    const t = i / n;
-    // Near-instant attack, exponential tail.
-    const env = (i < 30 ? i / 30 : 1) * Math.exp(-t * rndRange(rng, 7, 12));
-    out[i] = hp(bp((rng() * 2 - 1) * env));
-  }
-  return out;
-}
-
-/**
- * A crowd clapping: claps scattered in time, thickened with a low body layer
- * so it reads as a room full of people rather than a stack of clicks.
- */
-function applause(seed, { seconds, density, swellMs = 140, tailMs = 600, width = 0.55 }) {
-  const rng = makeRng(seed);
-  const n = Math.floor(seconds * SR);
-  const left = new Float64Array(n);
-  const right = new Float64Array(n);
-
-  const swell = Math.floor((swellMs / 1000) * SR);
-  const tail = Math.floor((tailMs / 1000) * SR);
-  const shape = (i) => {
-    const attack = i < swell ? i / swell : 1;
-    const release = i > n - tail ? (n - i) / tail : 1;
-    return attack * release * release;
-  };
-
-  const total = Math.floor(seconds * density);
-  for (let c = 0; c < total; c++) {
-    const at = Math.floor(rng() * (n - 3000));
-    const gain = rndRange(rng, 0.25, 1) * shape(at);
-    // Pan each clap; decorrelating the channels is most of what makes a
-    // crowd sound wide instead of flat.
-    const pan = rndRange(rng, -width, width);
-    const gl = gain * (1 - Math.max(0, pan));
-    const gr = gain * (1 + Math.min(0, pan));
-    const c1 = clap(rng);
-    for (let i = 0; i < c1.length; i++) {
-      const idx = at + i;
-      if (idx >= n) break;
-      left[idx] += c1[i] * gl;
-      right[idx] += c1[i] * gr;
-    }
-  }
-
-  // Low body: the rumble of a lot of people in one place.
-  const bodyLp = biquad('lowpass', 700, 0.6);
-  const bodyHp = biquad('highpass', 130, 0.7);
-  let brown = 0;
-  for (let i = 0; i < n; i++) {
-    brown = brown * 0.985 + (rng() * 2 - 1) * 0.06;
-    const body = bodyHp(bodyLp(brown)) * shape(i) * 0.5;
-    left[i] += body;
-    right[i] += body * 0.92;
-  }
-
-  return [Array.from(left).map(softClip), Array.from(right).map(softClip)];
-}
-
-/** Voices: filtered noise with slow formant-ish movement, for a cheer. */
-function cheer(seed, seconds) {
-  const rng = makeRng(seed);
-  const n = Math.floor(seconds * SR);
-  const left = new Float64Array(n);
-  const right = new Float64Array(n);
-
-  const voices = 22;
-  for (let v = 0; v < voices; v++) {
-    const f = rndRange(rng, 620, 2100);
-    const bp = biquad('bandpass', f, rndRange(rng, 2.5, 6));
-    const rate = rndRange(rng, 0.6, 1.8);
-    const phase = rng() * Math.PI * 2;
-    const start = Math.floor(rng() * n * 0.25);
-    const pan = rndRange(rng, -0.7, 0.7);
-    const gl = (1 - Math.max(0, pan)) / voices;
-    const gr = (1 + Math.min(0, pan)) / voices;
-
-    for (let i = start; i < n; i++) {
-      const t = (i - start) / SR;
-      const swell = Math.min(1, t * 3) * Math.min(1, ((n - i) / SR) * 1.6);
-      const wobble = 0.7 + 0.3 * Math.sin(2 * Math.PI * rate * t + phase);
-      const s = bp(rng() * 2 - 1) * swell * wobble * 3.2;
-      left[i] += s * gl;
-      right[i] += s * gr;
-    }
-  }
-  return [Array.from(left), Array.from(right)];
-}
-
-// ------------------------------------------------------------------ sounds
-
 function ballHit() {
   const rng = makeRng(20260727);
   const n = Math.floor(0.16 * SR);
@@ -305,60 +202,6 @@ function undoTick() {
   return [Array.from(out)];
 }
 
-/** Loopable stadium murmur: quiet, wide, and seamless at the join. */
-function crowdAmbience() {
-  const rng = makeRng(31415926);
-  const seconds = 6;
-  const n = Math.floor(seconds * SR);
-  const left = new Float64Array(n);
-  const right = new Float64Array(n);
-
-  const lp = [biquad('lowpass', 1350, 0.7), biquad('lowpass', 1350, 0.7)];
-  const hp = [biquad('highpass', 190, 0.7), biquad('highpass', 190, 0.7)];
-  let bl = 0, br = 0;
-  // Two slow drifts so the level breathes instead of sitting flat.
-  let d1 = 0, d2 = 0;
-
-  for (let i = 0; i < n; i++) {
-    const t = i / SR;
-    bl = bl * 0.9885 + (rng() * 2 - 1) * 0.055;
-    br = br * 0.9885 + (rng() * 2 - 1) * 0.055;
-    d1 = d1 * 0.99995 + (rng() * 2 - 1) * 0.00035;
-    d2 = d2 * 0.99992 + (rng() * 2 - 1) * 0.00028;
-    const drift = 0.78 + 6 * d1 + 0.12 * Math.sin(2 * Math.PI * 0.13 * t + d2 * 40);
-    left[i] = hp[0](lp[0](bl)) * drift;
-    right[i] = hp[1](lp[1](br)) * drift;
-  }
-
-  // Sparse distant claps keep it from turning into plain noise.
-  const sprinkle = makeRng(2718281);
-  for (let c = 0; c < 34; c++) {
-    const at = Math.floor(sprinkle() * (n - 6000));
-    const g = rndRange(sprinkle, 0.05, 0.16);
-    const src = clap(sprinkle);
-    for (let i = 0; i < src.length; i++) {
-      left[at + i] += src[i] * g;
-      right[at + i] += src[i] * g * 0.8;
-    }
-  }
-
-  // Crossfade the tail over the head so the loop point is inaudible.
-  const xf = Math.floor(0.9 * SR);
-  const outL = new Float64Array(n - xf);
-  const outR = new Float64Array(n - xf);
-  for (let i = 0; i < outL.length; i++) {
-    outL[i] = left[i];
-    outR[i] = right[i];
-  }
-  for (let i = 0; i < xf; i++) {
-    const g = i / xf;
-    outL[i] = left[i] * g + left[n - xf + i] * (1 - g);
-    outR[i] = right[i] * g + right[n - xf + i] * (1 - g);
-  }
-
-  return [Array.from(outL), Array.from(outR)];
-}
-
 function mix(layers) {
   const n = Math.max(...layers.map(([l]) => l[0].length));
   const out = [new Float64Array(n), new Float64Array(n)];
@@ -378,33 +221,3 @@ const finish = (channels, { peak, cutoff, fadeMs = 8 }) =>
 
 writeWav('ball-hit.wav', finish(ballHit(), { peak: 0.8, cutoff: 11000, fadeMs: 2 }));
 writeWav('undo.wav', finish(undoTick(), { peak: 0.55, cutoff: 9000, fadeMs: 3 }));
-
-writeWav(
-  'applause-game.wav',
-  finish(applause(1001, { seconds: 1.5, density: 150, tailMs: 620 }), {
-    peak: 0.72,
-    cutoff: 8200,
-  })
-);
-
-writeWav(
-  'applause-set.wav',
-  finish(applause(2002, { seconds: 2.6, density: 230, swellMs: 180, tailMs: 900 }), {
-    peak: 0.82,
-    cutoff: 8600,
-  })
-);
-
-writeWav(
-  'celebration.wav',
-  finish(
-    mix([
-      [applause(3003, { seconds: 4, density: 280, swellMs: 220, tailMs: 1400, width: 0.7 }), 1],
-      [cheer(4004, 4), 0.85],
-    ]),
-    { peak: 0.88, cutoff: 9000, fadeMs: 10 }
-  )
-);
-
-// The loop crossfade must survive, so no edge fade here.
-writeWav('crowd.wav', normalise(removeDc(tame(crowdAmbience(), 4000)), 0.42));

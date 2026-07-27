@@ -79,16 +79,18 @@ export function getScoreAnnouncement(state: MatchState): string | null {
     const p1Str = mapPoint[p1] || '40';
     const p2Str = mapPoint[p2] || '40';
 
-    if (p1 === p2 && p1 > 0) {
-      return `${p1Str} - ${t('score.all')}`;
+    if (p1 === p2) {
+      return `${p1Str} ${t('score.all')}`;
     }
 
-    // Server score is announced first in tennis!
+    // Server score is announced first in tennis. A comma rather than a dash:
+    // speech engines read a hyphen as "minus" or swallow it, and either way
+    // the second half of the score stops registering.
     const serverIsSide1 = state.serving === 'side1';
     const serverScoreStr = serverIsSide1 ? p1Str : p2Str;
     const receiverScoreStr = serverIsSide1 ? p2Str : p1Str;
 
-    return `${serverScoreStr} - ${receiverScoreStr}`;
+    return `${serverScoreStr}, ${receiverScoreStr}`;
   }
 
   return null;

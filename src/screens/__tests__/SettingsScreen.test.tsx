@@ -23,7 +23,6 @@ const baseConfig: MatchConfig = {
 
 const appSettings: AppSettings = {
   voiceAnnounce: true,
-  liveCrowd: true,
   maxBrightness: true,
 };
 

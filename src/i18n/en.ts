@@ -54,7 +54,6 @@ export const en = {
     tieBreak: 'Tie-Break (6:6)',
     matchTieBreak: 'Match Tie-Break (Final Set to 10)',
     maxBrightness: 'Max Brightness During Game',
-    liveCrowd: 'Live Crowd Ambience',
     clickSound: 'Click Sound on Touch',
     scoreAnnouncements: 'Voice Announcements',
     language: 'Announcement Language',

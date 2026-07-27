@@ -13,7 +13,6 @@ const HISTORY_LIMIT = 500;
 
 export const defaultAppSettings: AppSettings = {
   voiceAnnounce: true,
-  liveCrowd: true,
   maxBrightness: true,
 };
 

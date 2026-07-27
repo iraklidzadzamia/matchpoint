@@ -226,14 +226,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               />
             </View>
 
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>{t('ui.liveCrowd')}</Text>
-              <Switch
-                value={appSettings.liveCrowd}
-                onValueChange={(v) => onUpdateAppSettings({ liveCrowd: v })}
-                trackColor={{ false: theme.colors.bg.surface, true: theme.colors.accent.primary }}
-              />
-            </View>
           </View>
         </ScrollView>
       </View>

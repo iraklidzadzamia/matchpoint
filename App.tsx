@@ -18,9 +18,9 @@ import { ScoreScreen } from './src/screens/ScoreScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { MatchSummaryScreen } from './src/screens/MatchSummaryScreen';
 import { HistoryScreen } from './src/screens/HistoryScreen';
-import { liveCrowd } from './src/audio/liveCrowd';
 import { scoreAnnouncer } from './src/audio/scoreAnnouncer';
 import { soundEffects } from './src/audio/soundEffects';
+import { audioQueue } from './src/audio/audioQueue';
 
 type Screen = 'home' | 'setup' | 'score' | 'summary' | 'history';
 
@@ -52,22 +52,22 @@ export default function App() {
       setAppSettings(savedApp);
     }
     initSettings();
+    // Choose the voice and open the audio session up front, so the first
+    // point of a match sounds the same as every one after it.
+    scoreAnnouncer.pickBestVoice();
+    soundEffects.prepare();
   }, []);
 
   // Mute is a master switch; the per-category settings apply underneath it.
   useEffect(() => {
     soundEffects.setEnabled(!muted);
     scoreAnnouncer.setEnabled(!muted && appSettings.voiceAnnounce);
-    liveCrowd.setEnabled(!muted && appSettings.liveCrowd);
-  }, [muted, appSettings.voiceAnnounce, appSettings.liveCrowd]);
+  }, [muted, appSettings.voiceAnnounce]);
 
+  // Nothing queued during a match should follow the user off the score screen.
   useEffect(() => {
-    if (currentScreen === 'score' && !muted && appSettings.liveCrowd) {
-      liveCrowd.start();
-    } else {
-      liveCrowd.stop();
-    }
-  }, [currentScreen, muted, appSettings.liveCrowd]);
+    if (currentScreen !== 'score') audioQueue.stopAll();
+  }, [currentScreen]);
 
   // restoreSystemBrightnessAsync is Android-only, so remember the user's own
   // level and put it back ourselves when leaving the score screen.

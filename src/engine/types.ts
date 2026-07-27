@@ -43,7 +43,6 @@ export interface MatchRecord {
 
 export interface AppSettings {
   voiceAnnounce: boolean;
-  liveCrowd: boolean;
   maxBrightness: boolean;
 }
 
