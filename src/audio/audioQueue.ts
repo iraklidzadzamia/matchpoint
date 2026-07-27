@@ -35,6 +35,15 @@ class AudioQueueManager {
         scoreAnnouncer.announce(textToAnnounce);
       }, 250);
     }
+
+    // 4. Crowd reaction, held back until the announcement has had its say.
+    if (event.type === 'game') {
+      setTimeout(() => soundEffects.playApplauseGame(), 1400);
+    } else if (event.type === 'set') {
+      setTimeout(() => soundEffects.playApplauseSet(), 1700);
+    } else if (event.type === 'match') {
+      setTimeout(() => soundEffects.playCelebrationMatch(), 1900);
+    }
   }
 
   async handleUndo() {
