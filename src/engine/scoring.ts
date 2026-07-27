@@ -15,7 +15,8 @@ export function createMatch(config: MatchConfig): MatchState {
     isTieBreak: false,
     isMatchTieBreak: false,
     tieBreakPoints: [0, 0],
-    
+    tieBreakStartServer: null,
+
     serving: config.servingFirst,
     serverPlayerIndex: [0, 0],
     courtSide: 'original',
@@ -267,10 +268,17 @@ function winGame(
 
   state.games[winnerIdx] += 1;
 
-  // Alternate server for next game
+  // Alternate server for next game. After a tie-break the next set is opened by
+  // the pair that did NOT open the tie-break (FIP Rule 1, Tie-Break §5) — which
+  // is not always the same as flipping whoever served the final point.
   const prevServer = state.serving;
-  state.serving = prevServer === 'side1' ? 'side2' : 'side1';
-  
+  if (fromTieBreak && state.tieBreakStartServer) {
+    state.serving = state.tieBreakStartServer === 'side1' ? 'side2' : 'side1';
+  } else {
+    state.serving = prevServer === 'side1' ? 'side2' : 'side1';
+  }
+  state.tieBreakStartServer = null;
+
   // Rotate doubles server index for side that just served
   if (state.config.format === 'doubles') {
     if (prevServer === 'side1') {
@@ -312,6 +320,9 @@ function winGame(
     } else {
       state.isTieBreak = true;
     }
+    // state.serving was just set to whoever opens the next game — i.e. the
+    // player who opens the tie-break.
+    state.tieBreakStartServer = state.serving;
   }
 
   state.lastEvent = {

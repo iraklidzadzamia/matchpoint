@@ -129,21 +129,90 @@ describe('MatchPoint Scoring Engine', () => {
     expect(match.games).toEqual([1, 0]);
   });
 
-  test('golden point after one advantage', () => {
-    let match = createMatch({ ...defaultConfig, goldenPointEnabled: true, advantagesBeforeGolden: 1 });
+  test('classic deuce allows unlimited advantages', () => {
+    let match = createMatch(defaultConfig); // goldenPointEnabled: false
     for (let i = 0; i < 3; i++) match = addPoint(match, 'side1');
     for (let i = 0; i < 3; i++) match = addPoint(match, 'side2');
     expect(match.isDeuce).toBe(true);
 
-    match = addPoint(match, 'side1'); // advantage side1
-    expect(match.advantage).toBe('side1');
+    // Three full advantage-then-back-to-deuce cycles must never end the game
+    for (let cycle = 0; cycle < 3; cycle++) {
+      match = addPoint(match, 'side1');
+      expect(match.advantage).toBe('side1');
+      match = addPoint(match, 'side2');
+      expect(match.advantage).toBeNull();
+      expect(match.games).toEqual([0, 0]);
+    }
 
-    match = addPoint(match, 'side2'); // back to deuce, one advantage used
-    expect(match.advantage).toBeNull();
-    expect(match.advantageCount).toBe(1);
-
-    match = addPoint(match, 'side2'); // golden point decides
+    // Only advantage followed by another point wins it
+    match = addPoint(match, 'side2');
+    expect(match.advantage).toBe('side2');
+    match = addPoint(match, 'side2');
     expect(match.games).toEqual([0, 1]);
+  });
+
+  // FIP Rule 1, Option 2: deuce 1 -> advantage 1 -> deuce 2 -> advantage 2 ->
+  // deuce 3, where a single Star Point decides the game.
+  test('star point decides only at the third deuce', () => {
+    let match = createMatch({ ...defaultConfig, goldenPointEnabled: true, advantagesBeforeGolden: 2 });
+    for (let i = 0; i < 3; i++) match = addPoint(match, 'side1');
+    for (let i = 0; i < 3; i++) match = addPoint(match, 'side2');
+    expect(match.isDeuce).toBe(true); // deuce 1
+
+    match = addPoint(match, 'side1'); // advantage 1
+    expect(match.advantage).toBe('side1');
+    match = addPoint(match, 'side2'); // deuce 2
+    expect(match.games).toEqual([0, 0]);
+
+    match = addPoint(match, 'side1'); // advantage 2 — must NOT end the game yet
+    expect(match.advantage).toBe('side1');
+    expect(match.games).toEqual([0, 0]);
+
+    match = addPoint(match, 'side2'); // deuce 3
+    expect(match.advantage).toBeNull();
+    expect(match.games).toEqual([0, 0]);
+
+    match = addPoint(match, 'side2'); // star point decides
+    expect(match.games).toEqual([0, 1]);
+  });
+
+  test('an advantage still wins the game outright under star point', () => {
+    let match = createMatch({ ...defaultConfig, goldenPointEnabled: true, advantagesBeforeGolden: 2 });
+    for (let i = 0; i < 3; i++) match = addPoint(match, 'side1');
+    for (let i = 0; i < 3; i++) match = addPoint(match, 'side2');
+
+    match = addPoint(match, 'side1'); // advantage 1
+    match = addPoint(match, 'side1'); // converted
+    expect(match.games).toEqual([1, 0]);
+  });
+
+  test('golden point decides at the very first deuce', () => {
+    let match = createMatch({ ...defaultConfig, goldenPointEnabled: true, advantagesBeforeGolden: 0 });
+    for (let i = 0; i < 3; i++) match = addPoint(match, 'side1');
+    for (let i = 0; i < 3; i++) match = addPoint(match, 'side2');
+    expect(match.isDeuce).toBe(true);
+
+    match = addPoint(match, 'side2');
+    expect(match.games).toEqual([0, 1]);
+  });
+
+  // FIP Rule 1, Tie-Break §5: the next set is opened by the pair that did not
+  // open the tie-break — not simply whoever served the last point.
+  test('the set after a tie-break is opened by the pair that did not open it', () => {
+    let match = createMatch(defaultConfig);
+    match.games = [6, 5];
+    match.points = [0, 3];
+    match = addPoint(match, 'side2'); // 6:6 -> tie-break starts
+
+    expect(match.isTieBreak).toBe(true);
+    const tieBreakOpener = match.serving;
+    expect(match.tieBreakStartServer).toBe(tieBreakOpener);
+
+    // Win the tie-break 7-0, an odd number of points
+    for (let i = 0; i < 7; i++) match = addPoint(match, 'side1');
+    expect(match.setsWon).toEqual([1, 0]);
+    expect(match.serving).toBe(tieBreakOpener === 'side1' ? 'side2' : 'side1');
+    expect(match.tieBreakStartServer).toBeNull();
   });
 
   test('doubles tie-break rotates the serving player index', () => {

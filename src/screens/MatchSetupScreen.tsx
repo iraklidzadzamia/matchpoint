@@ -61,7 +61,6 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
       ...baseConfig,
       sport,
       format,
-      goldenPointEnabled: sport === 'padel' ? true : baseConfig.goldenPointEnabled,
       side1: {
         player1: resolvedNames.s1p1 || 'Side 1',
         player2: isSingles ? undefined : resolvedNames.s1p2 || 'Player 2',
@@ -128,49 +127,37 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Players Inputs Grid */}
+        {/* Player names, one side per full-width card */}
         {customNames && (
-          <View style={styles.playersGrid}>
-            {/* Side 1 */}
-            <View style={styles.sideColumn}>
-              <Text style={styles.sideHeader}>Side 1 (Blue)</Text>
-              <NameInput
-                label="Player 1"
-                value={side1P1}
-                onChangeText={setSide1P1}
-              />
+          <View>
+            <View style={styles.sideCard}>
+              <View style={styles.sideHeaderRow}>
+                <View style={[styles.sideDot, { backgroundColor: theme.colors.side1.base }]} />
+                <Text style={[styles.sideHeader, { color: theme.colors.side1.base }]}>Side 1</Text>
+              </View>
+              <NameInput side="side1" value={side1P1} onChangeText={setSide1P1} placeholder="Player 1" />
               {!isSingles && (
-                <NameInput
-                  label="Player 2"
-                  value={side1P2}
-                  onChangeText={setSide1P2}
-                />
+                <NameInput side="side1" value={side1P2} onChangeText={setSide1P2} placeholder="Player 2" />
               )}
             </View>
 
-            {/* Swap Button */}
-            <TouchableOpacity
-              style={styles.swapBtn}
-              onPress={handleSwapSidesInput}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="swap-horizontal" size={24} color={theme.colors.accent.primary} />
-            </TouchableOpacity>
+            <View style={styles.swapRow}>
+              <View style={styles.swapLine} />
+              <TouchableOpacity style={styles.swapBtn} onPress={handleSwapSidesInput} activeOpacity={0.7}>
+                <Ionicons name="swap-vertical" size={20} color={theme.colors.text.secondary} />
+                <Text style={styles.swapBtnText}>{t('ui.swapSides')}</Text>
+              </TouchableOpacity>
+              <View style={styles.swapLine} />
+            </View>
 
-            {/* Side 2 */}
-            <View style={styles.sideColumn}>
-              <Text style={styles.sideHeader}>Side 2 (Green)</Text>
-              <NameInput
-                label="Player 1"
-                value={side2P1}
-                onChangeText={setSide2P1}
-              />
+            <View style={styles.sideCard}>
+              <View style={styles.sideHeaderRow}>
+                <View style={[styles.sideDot, { backgroundColor: theme.colors.side2.base }]} />
+                <Text style={[styles.sideHeader, { color: theme.colors.side2.base }]}>Side 2</Text>
+              </View>
+              <NameInput side="side2" value={side2P1} onChangeText={setSide2P1} placeholder="Player 1" />
               {!isSingles && (
-                <NameInput
-                  label="Player 2"
-                  value={side2P2}
-                  onChangeText={setSide2P2}
-                />
+                <NameInput side="side2" value={side2P2} onChangeText={setSide2P2} placeholder="Player 2" />
               )}
             </View>
           </View>
@@ -252,33 +239,57 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  playersGrid: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  sideColumn: {
-    flex: 1,
+  sideCard: {
     backgroundColor: theme.colors.bg.surface,
     padding: theme.spacing.md,
-    borderRadius: theme.radius.lg,
+    paddingBottom: theme.spacing.sm,
+    borderRadius: theme.radius.xl,
     borderWidth: 1,
     borderColor: theme.colors.glass.border,
   },
+  sideHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: theme.spacing.sm,
+  },
+  sideDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+  },
   sideHeader: {
-    color: theme.colors.accent.primary,
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: theme.spacing.xs,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  swapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+  },
+  swapLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.glass.border,
   },
   swapBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.accent.primaryGlow,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 8,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.bg.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.glass.border,
+  },
+  swapBtnText: {
+    color: theme.colors.text.secondary,
+    fontSize: 13,
+    fontWeight: '700',
   },
   startBtn: {
     height: 56,

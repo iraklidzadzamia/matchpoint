@@ -57,6 +57,9 @@ export const SetScoreBar: React.FC<SetScoreBarProps> = ({ state, onPressPlayers 
               <Text style={[styles.setScoreText, isCurrentSet && styles.currentSetScoreText]}>
                 {setScore[0]}
               </Text>
+              <Text style={[styles.setScoreDash, isCurrentSet && styles.currentSetScoreText]}>
+                –
+              </Text>
               <Text style={[styles.setScoreText, isCurrentSet && styles.currentSetScoreText]}>
                 {setScore[1]}
               </Text>
@@ -134,7 +137,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   setColumn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
     opacity: 0.6,
   },
   currentSetColumn: {
@@ -145,6 +150,13 @@ const styles = StyleSheet.create({
   setScoreText: {
     color: theme.colors.text.primary,
     fontSize: 14,
+    fontWeight: '700',
+    minWidth: 12,
+    textAlign: 'center',
+  },
+  setScoreDash: {
+    color: theme.colors.text.secondary,
+    fontSize: 12,
     fontWeight: '700',
   },
   currentSetScoreText: {

@@ -29,6 +29,9 @@ export const PlayersServingOverlay: React.FC<PlayersServingOverlayProps> = ({
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      // The score screen is locked to landscape; without this iOS kills the
+      // app with UIApplicationInvalidInterfaceOrientation when the modal opens.
+      supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
     >
       <View style={styles.backdrop}>
         <View style={styles.container}>

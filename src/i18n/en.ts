@@ -38,8 +38,15 @@ export const en = {
     doubles: 'Doubles',
     testVoice: 'Test',
     setsInMatch: 'Sets in Match',
-    goldenPoint: 'Golden Point',
-    advantagesBeforeGolden: 'Advantages before Golden Point',
+    // The three options of FIP Rule 1, each named and spelled out so nothing
+    // depends on knowing the jargon.
+    deuceRule: 'When the score reaches 40:40',
+    deuce_tennis: 'Like in tennis',
+    deuce_tennis_hint: 'Win 2 points in a row to take the game. Advantages never run out.',
+    deuce_star: 'Star point',
+    deuce_star_hint: 'Up to 2 advantages. If the score comes back to 40:40 a third time, the next point wins. The 2026 pro tour rule.',
+    deuce_golden: 'Golden point',
+    deuce_golden_hint: 'The very next point wins the game. The usual choice in clubs.',
     tieBreak: 'Tie-Break (6:6)',
     matchTieBreak: 'Match Tie-Break (Final Set to 10)',
     maxBrightness: 'Max Brightness During Game',

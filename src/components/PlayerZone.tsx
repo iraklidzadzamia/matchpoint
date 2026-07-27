@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   flashOverlay: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     borderRadius: theme.radius.lg,
   },
   scoreText: {

@@ -54,6 +54,7 @@ export interface MatchState {
   isTieBreak: boolean;
   isMatchTieBreak: boolean;            // Super tie-break in final set
   tieBreakPoints: [number, number];
+  tieBreakStartServer: PlayerSide | null; // Who opened the tie-break; the other side opens the next set
   
   serving: PlayerSide;
   serverPlayerIndex: [number, number]; // [side1PlayerIdx, side2PlayerIdx] (0 or 1)

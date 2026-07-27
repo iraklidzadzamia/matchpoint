@@ -8,9 +8,24 @@ import {
   ScrollView,
   Switch,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { MatchConfig, SwapSidesRule, AppSettings } from '../engine/types';
 import { theme } from '../styles/theme';
 import { t } from '../i18n';
+
+// The three ways to score 40:40 in FIP Rule 1, in the rulebook's own order.
+// The engine stores them as two fields; naming them keeps the UI out of jargon.
+type DeuceRule = 'tennis' | 'star' | 'golden';
+
+const DEUCE_RULES: DeuceRule[] = ['tennis', 'star', 'golden'];
+
+// Star Point plays two advantages before the deciding point; Golden Point none.
+const ADVANTAGES_FOR_RULE: Record<DeuceRule, 0 | 2> = { tennis: 0, star: 2, golden: 0 };
+
+function toDeuceRule(config: MatchConfig): DeuceRule {
+  if (!config.goldenPointEnabled) return 'tennis';
+  return config.advantagesBeforeGolden === 0 ? 'golden' : 'star';
+}
 
 interface SettingsScreenProps {
   visible: boolean;
@@ -29,8 +44,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onUpdateConfig,
   onUpdateAppSettings,
 }) => {
-  const [goldenPoint, setGoldenPoint] = useState(config.goldenPointEnabled);
-  const [advCount, setAdvCount] = useState<0 | 1 | 2>(config.advantagesBeforeGolden);
+  const [deuceRule, setDeuceRule] = useState<DeuceRule>(toDeuceRule(config));
   const [tieBreak, setTieBreak] = useState(config.tieBreakEnabled);
   const [matchTieBreak, setMatchTieBreak] = useState(config.matchTieBreakEnabled);
   const [swapSides, setSwapSides] = useState<SwapSidesRule>(config.swapSides);
@@ -40,8 +54,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   // (new match started, rules edited) while this component stayed mounted.
   useEffect(() => {
     if (!visible) return;
-    setGoldenPoint(config.goldenPointEnabled);
-    setAdvCount(config.advantagesBeforeGolden);
+    setDeuceRule(toDeuceRule(config));
     setTieBreak(config.tieBreakEnabled);
     setMatchTieBreak(config.matchTieBreakEnabled);
     setSwapSides(config.swapSides);
@@ -50,8 +63,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   const handleDone = () => {
     onUpdateConfig({
-      goldenPointEnabled: goldenPoint,
-      advantagesBeforeGolden: advCount,
+      goldenPointEnabled: deuceRule !== 'tennis',
+      advantagesBeforeGolden: ADVANTAGES_FOR_RULE[deuceRule],
       tieBreakEnabled: tieBreak,
       matchTieBreakEnabled: matchTieBreak,
       swapSides,
@@ -66,6 +79,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={onClose}
+      // Reachable from the landscape-locked score screen — see PlayersServingOverlay.
+      supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
     >
       <View style={styles.container}>
         <View style={styles.header}>
@@ -79,46 +94,33 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           {/* Game Rules Section */}
           <Text style={styles.sectionHeader}>Game Settings</Text>
           <View style={styles.cardGroup}>
-            {/* Golden Point Toggle */}
-            <View style={styles.row}>
-              <View style={styles.labelCol}>
-                <Text style={styles.rowLabel}>{t('ui.goldenPoint')}</Text>
-                <Text style={styles.rowSubLabel}>Deciding point at 40:40</Text>
-              </View>
-              <Switch
-                value={goldenPoint}
-                onValueChange={setGoldenPoint}
-                trackColor={{ false: theme.colors.bg.surface, true: theme.colors.accent.primary }}
-              />
-            </View>
-
-            {/* Advantages before Golden Point */}
-            {goldenPoint && (
-              <View style={styles.rowSubSection}>
-                <Text style={styles.rowLabel}>{t('ui.advantagesBeforeGolden')}</Text>
-                <View style={styles.segmentedRow}>
-                  {([0, 1, 2] as const).map((num) => (
-                    <TouchableOpacity
-                      key={num}
-                      style={[
-                        styles.segmentBtn,
-                        advCount === num && styles.segmentBtnActive,
-                      ]}
-                      onPress={() => setAdvCount(num)}
-                    >
-                      <Text
-                        style={[
-                          styles.segmentBtnText,
-                          advCount === num && styles.segmentBtnTextActive,
-                        ]}
-                      >
-                        {num}
+            {/* What happens at 40:40 */}
+            <View style={styles.rowSubSection}>
+              <Text style={styles.rowLabel}>{t('ui.deuceRule')}</Text>
+              {DEUCE_RULES.map((rule) => {
+                const selected = deuceRule === rule;
+                return (
+                  <TouchableOpacity
+                    key={rule}
+                    style={[styles.optionRow, selected && styles.optionRowActive]}
+                    onPress={() => setDeuceRule(rule)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={selected ? 'radio-button-on' : 'radio-button-off'}
+                      size={22}
+                      color={selected ? theme.colors.accent.primary : theme.colors.text.muted}
+                    />
+                    <View style={styles.optionTextCol}>
+                      <Text style={[styles.optionTitle, selected && styles.optionTitleActive]}>
+                        {t(`ui.deuce_${rule}`)}
                       </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
+                      <Text style={styles.optionHint}>{t(`ui.deuce_${rule}_hint`)}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
             {/* Tie-Break Toggle */}
             <View style={styles.row}>
@@ -305,6 +307,39 @@ const styles = StyleSheet.create({
   rowSubLabel: {
     color: theme.colors.text.secondary,
     fontSize: 12,
+    marginTop: 2,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    marginTop: 8,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.glass.border,
+    backgroundColor: theme.colors.bg.elevated,
+  },
+  optionRowActive: {
+    borderColor: theme.colors.accent.primary,
+    backgroundColor: theme.colors.accent.primaryGlow,
+  },
+  optionTextCol: {
+    flex: 1,
+  },
+  optionTitle: {
+    color: theme.colors.text.primary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  optionTitleActive: {
+    color: theme.colors.accent.primary,
+  },
+  optionHint: {
+    color: theme.colors.text.secondary,
+    fontSize: 12,
+    lineHeight: 16,
     marginTop: 2,
   },
   rowSubSection: {

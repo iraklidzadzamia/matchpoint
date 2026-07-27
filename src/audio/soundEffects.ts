@@ -1,7 +1,7 @@
 import { Audio } from 'expo-av';
 
 // Generate synthetic WAV audio data URIs for instant playback without external network downloads!
-function createBeepWav(freq: number, durationMs: number, type: 'sine' | 'square' | 'noise' = 'sine'): string {
+function createBeepWav(freq: number, durationMs: number): string {
   const sampleRate = 22050;
   const numSamples = Math.floor((sampleRate * durationMs) / 1000);
   const dataSize = numSamples * 2;
@@ -31,15 +31,7 @@ function createBeepWav(freq: number, durationMs: number, type: 'sine' | 'square'
   for (let i = 0; i < numSamples; i++) {
     const t = i / sampleRate;
     const decay = Math.max(0, 1 - i / numSamples);
-    let sample = 0;
-
-    if (type === 'sine') {
-      sample = Math.sin(2 * Math.PI * freq * t) * decay;
-    } else if (type === 'noise') {
-      sample = (Math.random() * 2 - 1) * decay;
-    } else if (type === 'square') {
-      sample = (Math.sin(2 * Math.PI * freq * t) >= 0 ? 0.7 : -0.7) * decay;
-    }
+    const sample = Math.sin(2 * Math.PI * freq * t) * decay;
 
     const int16 = Math.max(-32768, Math.min(32767, Math.floor(sample * 32767 * 0.7)));
     view.setInt16(44 + i * 2, int16, true);
@@ -60,12 +52,10 @@ function createBeepWav(freq: number, durationMs: number, type: 'sine' | 'square'
   return `data:audio/wav;base64,${base64}`;
 }
 
-const POINT_POP_WAV = createBeepWav(600, 120, 'sine');     // Crisp tennis ball pop
-const DEUCE_CHORD_WAV = createBeepWav(330, 400, 'square');  // Dramatic chord
-const APPLAUSE_GAME_WAV = createBeepWav(440, 600, 'noise'); // Game applause
-const APPLAUSE_SET_WAV = createBeepWav(520, 1200, 'noise'); // Set applause
-const CELEBRATION_WAV = createBeepWav(660, 2000, 'noise');  // Match ovation
-const UNDO_SWOOSH_WAV = createBeepWav(250, 100, 'sine');    // Soft undo tick
+// Noise-based "applause" and "crowd" sounds were just bursts of static, so the
+// game/set/match moments are marked by haptics and the spoken announcement.
+const POINT_POP_WAV = createBeepWav(600, 120);   // Crisp tennis ball pop
+const UNDO_SWOOSH_WAV = createBeepWav(250, 100); // Soft undo tick
 
 class SoundEffectsManager {
   private enabled: boolean = true;
@@ -100,22 +90,6 @@ class SoundEffectsManager {
 
   async playPointPop() {
     await this.playDataUri(POINT_POP_WAV);
-  }
-
-  async playDeuceChord() {
-    await this.playDataUri(DEUCE_CHORD_WAV);
-  }
-
-  async playApplauseGame() {
-    await this.playDataUri(APPLAUSE_GAME_WAV);
-  }
-
-  async playApplauseSet() {
-    await this.playDataUri(APPLAUSE_SET_WAV);
-  }
-
-  async playCelebrationMatch() {
-    await this.playDataUri(CELEBRATION_WAV);
   }
 
   async playUndo() {

@@ -35,21 +35,6 @@ class AudioQueueManager {
         scoreAnnouncer.announce(textToAnnounce);
       }, 250);
     }
-
-    // 4. Play Applause SFX based on event type
-    if (event.type === 'game') {
-      setTimeout(() => {
-        soundEffects.playApplauseGame();
-      }, 1200);
-    } else if (event.type === 'set') {
-      setTimeout(() => {
-        soundEffects.playApplauseSet();
-      }, 1500);
-    } else if (event.type === 'match') {
-      setTimeout(() => {
-        soundEffects.playCelebrationMatch();
-      }, 1800);
-    }
   }
 
   async handleUndo() {
