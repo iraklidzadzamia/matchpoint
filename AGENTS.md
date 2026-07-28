@@ -1,3 +1,219 @@
-# Expo HAS CHANGED
+# MatchPoint — notes for whoever works on this next
 
-Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before writing any code.
+A tennis and padel scorekeeper. Expo / React Native, TypeScript.
+
+Read this before changing anything. Most of it is written down because it was
+learned the hard way, and the mistakes are easy to repeat.
+
+The project runs on **Expo SDK 54** — read the docs for that version, at
+https://docs.expo.dev/versions/v54.0.0/, not "latest".
+
+```bash
+npm start        # dev server (Expo Go)
+npm test         # 55 tests
+npx tsc --noEmit --noUnusedLocals   # must be clean before committing
+npm run audio    # regenerate the generated sound effects
+```
+
+---
+
+## Hard constraints — do not undo these
+
+### The SDK is pinned to 54 on purpose
+
+Expo Go stopped shipping past **SDK 54** — the App Store version is 54.0.2 and
+there is no newer one. Upgrading the SDK means the app can no longer be opened
+on a phone without a custom build.
+
+This project was found on SDK 57 with `expo-av` still pinned to its SDK 54
+version, because `expo-av` was **removed** from the SDK after 54. That is why
+audio was completely dead and nobody had noticed: every call failed into a
+`try/catch` that only logged a warning.
+
+**If you upgrade the SDK, you are committing to custom builds. Say so out loud.**
+
+### `app.json` orientation must stay `"default"`
+
+The score screen locks itself to landscape at runtime through
+`expo-screen-orientation`. `orientation` in `app.json` controls which
+orientations iOS permits *at all*. It was set to `"portrait"`, which works in
+Expo Go but would make the landscape lock silently fail in a real build — the
+score screen would come up locked to portrait.
+
+### Modals need `supportedOrientations`
+
+React Native modals default to portrait only. Opening one from the
+landscape-locked score screen **kills the app natively** with
+`UIApplicationInvalidInterfaceOrientation` — no JS error, no stack trace, just
+an instant close. Both `PlayersServingOverlay` and `SettingsScreen` set
+`supportedOrientations` for this reason. Any new modal reachable from the score
+screen needs it too.
+
+---
+
+## Audio: the part that will waste your time
+
+Three separate iOS subsystems are in play and they interfere:
+
+- `expo-audio` (`AVAudioPlayer`) for the tick, undo and applause
+- `expo-speech` (`AVSpeechSynthesizer`) for the spoken score
+- the shared `AVAudioSession` underneath both
+
+**The spoken score was being cut off after 400ms** — a full "Thirty, Fifteen"
+runs about 1500ms. It took three attempts to find because it was intermittent.
+It was not a race, not a stale timer, and not the `stop()` call. It was simply
+that speech started 420ms after the tap, while the system was still finishing
+with the 170ms tick that preceded it.
+
+So:
+
+- **`TICK_DELAY` and `SPEECH_DELAY` in `audioQueue.ts` are load-bearing.** The
+  530ms of clear air between them is what makes announcements complete. Do not
+  tighten it to make the app feel snappier without measuring.
+- The audio session is held open (`setIsAudioActiveAsync(true)`) and shared
+  (`interruptionMode: 'mixWithOthers'`). Taking it exclusively made every short
+  effect tear the session down on its way out.
+- `audioQueue` owns every timer it schedules. A new point, an undo, or leaving
+  the score screen cancels what is still pending. Before that, undo would still
+  announce the point it had just removed, and rapid points talked over each
+  other. **Never schedule audio with a bare `setTimeout`.**
+
+### How to debug audio without guessing
+
+You cannot hear the app, and neither could the agent that wrote this. Do not
+iterate on "sounds wrong" by feel. Instead:
+
+1. Ask for a screen recording.
+2. Extract the audio and measure the bursts:
+   `ffmpeg -i rec.mov -vn -ac 1 -ar 22050 out.wav`, then read RMS per 25ms
+   frame with `astats` and group frames into bursts.
+3. Generate a reference for what the phrase *should* measure:
+   `say -o ref.aiff "Fifteen, Love"` → 1292ms. Now "is it truncated" is a
+   number, not an opinion.
+4. When measurement is not enough, add temporary `console.log` traces with
+   timestamps around `Speech.speak` (`onStart` / `onDone` / `onStopped`). They
+   land in the Metro log and settle the question in one round trip.
+
+Watch the burst grouping: a comma in the text produces a real pause, and a
+tolerance under ~300ms will split one phrase into two "bursts" and look like
+truncation that is not there.
+
+Use spectrograms (`showspectrumpic`) to sanity-check sound files: real applause
+is a dense wash with fine texture, tapering above ~6kHz. Noise that runs flat
+to 20kHz reads as hiss.
+
+### Sound files
+
+`assets/audio/applause-*.mp3` and `celebration.mp3` are a **real recording**
+(Pixabay, free for commercial use, no attribution), trimmed to three lengths
+and pulled down 4dB so they sit behind the announcement.
+
+`ball-hit.wav` and `undo.wav` are generated by `scripts/generate-audio.js`
+(`npm run audio`), deterministic from a fixed seed.
+
+**Synthesised applause was tried twice and abandoned.** Even with proper
+reverb, per-clap randomisation and a room model, it did not sound like a crowd.
+If you need another crowd sound, source a recording; do not synthesise one.
+
+Ambient stadium noise was built and then **deliberately removed** — filtered
+noise sounds like surf, and the user does not want any sound during a rally.
+Do not add it back.
+
+---
+
+## Scoring rules
+
+Checked against the **FIP Rules of Padel, 01.01.2026 edition**:
+[padelfip.com](https://www.padelfip.com/wp-content/uploads/2025/12/FIP_Rules-of-Padel-1.pdf).
+Read the actual rulebook before changing the engine.
+
+There are exactly three ways to score 40:40, and the engine models all three:
+
+| Rule | `goldenPointEnabled` | `advantagesBeforeGolden` |
+|---|---|---|
+| Advantage (tennis) | `false` | — |
+| Star Point (2026 pro tour) | `true` | `2` |
+| Golden Point (most clubs) | `true` | `0` |
+
+An earlier version offered "one advantage, then golden point"
+(`advantagesBeforeGolden: 1`). **That is not a rule anywhere.** Star Point —
+two advantages, then a deciding point at the third deuce — is the real second
+option, and it was mistakenly deleted before the rulebook was checked.
+
+Star point and golden point are **padel rules**. Tennis matches force
+`goldenPointEnabled: false`, and the settings section is hidden for tennis.
+
+Other rules the engine implements, all rulebook-checked: sets to 6 with a
+2-game margin (7-5 at 5-5, tie-break at 6-6), tie-break to 7 by 2, serve
+alternating one point then two, ends changed on odd games and every 6 tie-break
+points, and the next set opened by the pair that did **not** open the
+tie-break (not simply whoever served last — that is only the same on even
+point counts).
+
+`swapSides` defaults to `off`. Players really do change ends, but the person
+holding the phone does not, and mirroring the screen moves the tap zones
+mid-match.
+
+---
+
+## Things that were wrong here before, and could come back
+
+- **Controls that do nothing.** The original code had a mute button wired to
+  local state, settings toggles that were never read, and a "Who keeps score?"
+  selector whose value was stored and never used by anything. When you add a
+  control, follow the value all the way to something that reads it.
+- **Fallback names getting stitched together.** With no names entered, a
+  doubles side became `"Side 1 & Player 2"` — a real fallback married to a
+  fictional partner — and that name followed the match into its saved history.
+  Fixing the label on screen was not enough; the config carried it too.
+- **Tests that assert on labels only.** The bug above survived a test that
+  checked the rendered text. The test that caught it starts a match and
+  inspects the resulting config.
+- **`jest.mock` factories** cannot reference outer variables unless the name
+  starts with `mock`. Create the mocks inside the factory and grab them via the
+  import instead.
+- **State that outlives its screen.** `SettingsScreen` stays mounted, so it
+  re-syncs from props on open; `HomeScreen` stays mounted underneath the setup
+  and history screens for the swipe-back transition, so it reloads on
+  `isActive`. If you add a screen that lingers, decide when it refreshes.
+- **Settings saved on top of each other.** `saveSettings` merges rather than
+  replaces; writing the partial straight in used to wipe every other stored
+  preference.
+
+---
+
+## Verify on a device, not just in tests
+
+The engine is well covered, but these paths have never been exercised on a real
+phone: **a tie-break at 6:6**, **choosing the server in doubles** through
+Players & Serving, and **max brightness**. Run them before shipping.
+
+There is no automated UI test for the swipe-back gesture either; it is
+hand-rolled on `PanResponder` because the app drives screens from plain state
+rather than a navigation library. `HomeScreen` renders underneath so the swipe
+reveals the real screen, and the dismissed screen is left parked off-canvas —
+resetting its transform flashed it back into place for a frame.
+
+---
+
+## Still to do
+
+Roughly easiest first:
+
+1. History detail — tapping a match in the list opens nothing.
+2. Remember the last players used, so a regular group is not retyped each time.
+3. Statistics — matches played, head-to-head records. The data is already in
+   history.
+4. A voice picker in settings. The announcer currently picks the best installed
+   English voice itself (British and Enhanced preferred), with no UI.
+5. Localisation. The `t()` scaffolding and `en.ts` exist; there is no second
+   language and no language switch.
+6. Scoring formats from the rulebook that are not offered yet: the 4-game mini
+   set, a tie-break to 7 replacing the final set, and **no-ad for tennis**
+   (used in ATP doubles and US college tennis) — the engine already supports
+   the last one, it is just not exposed.
+
+Then the Apple work: a standalone build (a free Apple ID gives 7-day
+certificates through Xcode; $99/year gives a real one and TestFlight), an App
+Store release, and the Apple Watch idea — which is a separate Swift project
+talking over WatchConnectivity, not another screen.

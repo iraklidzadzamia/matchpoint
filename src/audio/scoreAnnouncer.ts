@@ -63,10 +63,6 @@ class ScoreAnnouncer {
     if (!enabled) this.stop();
   }
 
-  setVoice(voiceId: string | undefined) {
-    this.voice = voiceId;
-  }
-
   /** Abandon whatever is being said, and any announcement still waiting. */
   stop() {
     this.sequence += 1;
