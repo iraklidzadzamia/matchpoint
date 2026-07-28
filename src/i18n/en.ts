@@ -65,6 +65,21 @@ export const en = {
     deleteMatchTitle: 'Delete this match?',
     clearHistoryTitle: 'Clear match history?',
     clearHistoryMessage: 'All saved results will be deleted. This cannot be undone.',
+    // Match detail
+    matchDetail: 'Match',
+    duration: 'Duration',
+    totalPoints: 'Points played',
+    pointsWon: 'Points won',
+    // Deliberately not called a rally: the clock starts when the previous point
+    // was tapped in, so it includes the walk back between points.
+    avgPoint: 'Avg. per point',
+    longestGame: 'Longest game',
+    setBreakdown: 'Set by set',
+    momentum: 'Who was ahead',
+    set: 'Set',
+    games: 'games',
+    points: 'points',
+    noPointDetail: 'This match was saved before point-by-point timing existed.',
     exitMatch: 'Exit Match',
     exitMatchTitle: 'Exit this match?',
     exitMatchMessage: 'The current match will be discarded and cannot be restored.',

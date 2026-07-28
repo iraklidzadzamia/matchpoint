@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { Segmented } from '../components/Segmented';
 import { SwipeBackView } from '../components/SwipeBackView';
 import { theme } from '../styles/theme';
 import { usePortraitOrientation } from '../hooks/useOrientation';
+import { loadLastPlayers, saveLastPlayers } from '../storage/matchStorage';
 import { t } from '../i18n';
 
 interface MatchSetupScreenProps {
@@ -37,12 +38,22 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
   const [sport, setSport] = useState<Sport>(baseConfig.sport);
   const [isSingles, setIsSingles] = useState<boolean>(baseConfig.format === 'singles');
 
-  // Left empty on purpose: a blank field with a placeholder is clearer than
-  // pre-filled sample names you might start a real match with.
+  // Blank to start; filled in below from the last match if there was one. A
+  // placeholder is clearer than a sample name you might start a real match with.
   const [side1P1, setSide1P1] = useState('');
   const [side1P2, setSide1P2] = useState('');
   const [side2P1, setSide2P1] = useState('');
   const [side2P2, setSide2P2] = useState('');
+
+  useEffect(() => {
+    loadLastPlayers().then((players) => {
+      if (!players) return;
+      setSide1P1(players.side1[0]);
+      setSide1P2(players.side1[1]);
+      setSide2P1(players.side2[0]);
+      setSide2P2(players.side2[1]);
+    });
+  }, []);
 
   const [scoreKeeper, setScoreKeeper] = useState<PlayerSide>('side1');
   const [servingFirst, setServingFirst] = useState<PlayerSide>('side1');
@@ -90,6 +101,10 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
       scoreKeeper,
     };
 
+    saveLastPlayers({
+      side1: [resolvedNames.s1p1, resolvedNames.s1p2],
+      side2: [resolvedNames.s2p1, resolvedNames.s2p2],
+    });
     onStartMatch(config);
   };
 

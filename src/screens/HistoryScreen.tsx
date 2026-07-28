@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { MatchRecord } from '../engine/types';
 import { loadHistory, clearHistory, deleteFromHistory } from '../storage/matchStorage';
 import { MatchScoreLines } from '../components/MatchScoreLines';
+import { MatchDetailScreen } from './MatchDetailScreen';
 import { SwipeBackView } from '../components/SwipeBackView';
 import { usePortraitOrientation } from '../hooks/useOrientation';
 import { theme } from '../styles/theme';
@@ -37,9 +38,10 @@ function formatDuration(sec: number): string {
 
 const MatchRow: React.FC<{
   record: MatchRecord;
+  onOpen: (record: MatchRecord) => void;
   onDelete: (record: MatchRecord) => void;
-}> = ({ record, onDelete }) => (
-  <View style={styles.card}>
+}> = ({ record, onOpen, onDelete }) => (
+  <TouchableOpacity style={styles.card} onPress={() => onOpen(record)} activeOpacity={0.75}>
     <View style={styles.cardHeader}>
       <Text style={styles.metaText}>
         {record.sport === 'tennis' ? t('ui.tennis') : t('ui.padel')} ·{' '}
@@ -67,13 +69,16 @@ const MatchRow: React.FC<{
         <Ionicons name="trash-outline" size={16} color={theme.colors.text.muted} />
       </TouchableOpacity>
     </View>
-  </View>
+  </TouchableOpacity>
 );
 
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
   usePortraitOrientation();
 
   const [records, setRecords] = useState<MatchRecord[] | null>(null);
+  // The detail view lives inside history rather than in the app's screen
+  // switch, so backing out of it lands on the list instead of the home screen.
+  const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     loadHistory().then(setRecords);
@@ -102,13 +107,27 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
         {
           text: t('ui.delete'),
           style: 'destructive',
-          onPress: async () => setRecords(await deleteFromHistory(record.id)),
+          onPress: async () => {
+            setOpenId((id) => (id === record.id ? null : id));
+            setRecords(await deleteFromHistory(record.id));
+          },
         },
       ]
     );
   };
 
   const isEmpty = records !== null && records.length === 0;
+  const openRecord = records?.find((r) => r.id === openId) ?? null;
+
+  if (openRecord) {
+    return (
+      <MatchDetailScreen
+        record={openRecord}
+        onBack={() => setOpenId(null)}
+        onDelete={handleDeleteOne}
+      />
+    );
+  }
 
   return (
     <SwipeBackView onBack={onBack}>
@@ -141,7 +160,9 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
         <FlatList
           data={records ?? []}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <MatchRow record={item} onDelete={handleDeleteOne} />}
+          renderItem={({ item }) => (
+            <MatchRow record={item} onOpen={(r) => setOpenId(r.id)} onDelete={handleDeleteOne} />
+          )}
           contentContainerStyle={styles.listContent}
         />
       )}

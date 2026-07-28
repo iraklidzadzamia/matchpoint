@@ -10,7 +10,7 @@ https://docs.expo.dev/versions/v54.0.0/, not "latest".
 
 ```bash
 npm start        # dev server (Expo Go)
-npm test         # 55 tests
+npm test         # 85 tests
 npx tsc --noEmit --noUnusedLocals   # must be clean before committing
 npm run audio    # regenerate the generated sound effects
 ```
@@ -185,8 +185,10 @@ mid-match.
 ## Verify on a device, not just in tests
 
 The engine is well covered, but these paths have never been exercised on a real
-phone: **a tie-break at 6:6**, **choosing the server in doubles** through
-Players & Serving, and **max brightness**. Run them before shipping.
+phone: **choosing the server in doubles** through Players & Serving and **max
+brightness**. Run them before shipping. The tie-break is covered by
+`src/components/__tests__/tieBreak.test.tsx`, and the history detail screen was
+walked through on the simulator.
 
 There is no automated UI test for the swipe-back gesture either; it is
 hand-rolled on `PanResponder` because the app drives screens from plain state
@@ -262,6 +264,46 @@ missing.
 screen comes out looking rotated. That is the capture, not the app — rotate the
 image with `ffmpeg -vf transpose=2` before judging the layout.
 
+### Trying a code change on the simulator without rebuilding
+
+The app installed on the simulator came from EAS, so it is a **release** build
+with the JavaScript baked into `main.jsbundle`. It never contacts Metro. Start
+`expo start`, watch nothing happen, and conclude the code is broken — that trap
+costs half an hour.
+
+Rebuild only the bundle and swap it in. No Xcode, no CocoaPods, about a minute:
+
+```bash
+npx expo export:embed --platform ios --dev false \
+  --entry-file node_modules/expo/AppEntry.js \
+  --bundle-output /tmp/mp/main.jsbundle --assets-dest /tmp/mp/assets
+
+APP=$(xcrun simctl get_app_container <udid> com.matchpoint.scorekeeper app)
+xcrun simctl terminate <udid> com.matchpoint.scorekeeper
+cp /tmp/mp/main.jsbundle "$APP/main.jsbundle"
+xcrun simctl launch <udid> com.matchpoint.scorekeeper
+```
+
+Copy `/tmp/mp/assets/.` over `$APP/assets/` as well if you added an image or a
+sound. A full EAS build is still needed for anything native — a new package, an
+`app.json` change, an icon.
+
+### Putting a finished match into history without playing one
+
+Reaching the match summary by tapping takes about a hundred taps. AsyncStorage
+on the simulator is a plain directory, so seed it instead: compile the engine
+with `tsc`, play a match in Node, and write the record where the native module
+would have.
+
+```
+<data container>/Library/Application Support/com.matchpoint.scorekeeper/RCTAsyncLocalStorage_V1/
+```
+
+Values live in files named after the **MD5 of the key** (so
+`@matchpoint_history` → `74c3d439da31cc1c6d7ee347162c4008`), with the key
+mapped to `null` in `manifest.json` beside them. Write both, then relaunch. The
+app has to be stopped while you do it, or it will overwrite you on the way out.
+
 ## The planned rally-replay feature
 
 The intended feature: the camera runs continuously, and scoring a point — from
@@ -310,6 +352,16 @@ sound and brightness switches.
 the time it happened. `addPoint` takes `at` as an argument rather than reading
 the clock, which is what keeps the engine deterministic.
 
+`src/engine/matchStats.ts` already reads that log for the history detail
+screen. One thing it is careful about, and you must be too: **`at` is when the
+point was tapped in, not when the rally started.** A gap between two points
+covers the rally plus the walk back to the baseline, so the screen calls it
+"avg. per point" and never "rally length". Only the camera can measure a rally.
+
+Records saved before the log existed have no `pointLog` at all. Everything that
+reads it goes through `record.pointLog ?? []` and the detail screen hides its
+statistics rather than showing a confident zero.
+
 ### Before building it
 
 - **It is unusable without the watch.** A phone on a tripod filming the court
@@ -330,22 +382,14 @@ the clock, which is what keeps the engine deterministic.
 Nothing here blocks a build; the app is ready to package as it stands. Roughly
 easiest first.
 
-**1. History detail.** Tapping a match in the list does nothing at all, which
-reads as broken rather than as missing. It should open the same breakdown the
-match summary shows.
-
-**2. Remember the last players.** Name fields start empty every time, so a
-group that plays together retypes them at every match. Persist the last set
-used and offer it as the default.
-
-**3. Statistics.** Matches played, head-to-head records, win rates. Everything
+**1. Statistics.** Matches played, head-to-head records, win rates. Everything
 needed is already in the saved history; this is a screen, not new data.
 
-**4. Voice picker.** The announcer chooses the best installed English voice
+**2. Voice picker.** The announcer chooses the best installed English voice
 itself — British and Enhanced preferred — with no UI to override it. Low
 priority; the automatic choice is the right one on most devices.
 
-**5. Localisation.** Every string lives in `src/i18n/en.ts` behind `t()`, so
+**3. Localisation.** Every string lives in `src/i18n/en.ts` behind `t()`, so
 the scaffolding is there, but there is one language and no way to switch.
 
 > Check the spoken score before promising a language. iOS has a good Russian
@@ -353,7 +397,7 @@ the scaffolding is there, but there is one language and no way to switch.
 > the interface can still be translated but the umpire has to fall back to
 > English or stay silent — decide which before starting.
 
-**6. Scoring formats from the rulebook that are not offered yet.** The engine
+**4. Scoring formats from the rulebook that are not offered yet.** The engine
 handles all of these; they are missing from the UI only.
 
 - **No-ad for tennis** — a deciding point at 40:40, the tennis equivalent of

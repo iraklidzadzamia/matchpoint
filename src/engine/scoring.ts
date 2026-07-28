@@ -122,6 +122,9 @@ export function addPoint(state: MatchState, winner: PlayerSide, at: number = Dat
 
   const next = applyPoint(state, winner);
   next.pointLog.push({ at, winner, type: next.lastEvent?.type ?? 'point' });
+  // The match ends when its last point was played, not when the engine happened
+  // to run — so the duration comes from the same clock as the point log.
+  if (next.matchStatus === 'finished') next.matchEndTime = at;
   return next;
 }
 
@@ -386,6 +389,8 @@ function winSet(
   if (state.setsWon[winnerIdx] >= setsNeeded) {
     state.matchStatus = 'finished';
     state.matchWinner = winner;
+    // Overwritten by addPoint with the point's own timestamp; this keeps the
+    // field non-null for anything that applies a point without one.
     state.matchEndTime = Date.now();
     state.lastEvent = {
       type: 'match',

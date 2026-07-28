@@ -6,6 +6,7 @@ const SETTINGS_KEY = '@matchpoint_settings';
 const APP_SETTINGS_KEY = '@matchpoint_app_settings';
 const UNDO_KEY = '@matchpoint_undo_stack';
 const HISTORY_KEY = '@matchpoint_history';
+const LAST_PLAYERS_KEY = '@matchpoint_last_players';
 
 // Each record is well under a kilobyte, so even a few thousand matches stay
 // small enough for AsyncStorage; the cap just keeps the list bounded.
@@ -93,6 +94,37 @@ export async function loadAppSettings(): Promise<AppSettings> {
   } catch (err) {
     console.warn('Load app settings error:', err);
     return defaultAppSettings;
+  }
+}
+
+/**
+ * The names typed for the last match. A group that plays together should not
+ * have to retype itself every time.
+ */
+export interface LastPlayers {
+  side1: [string, string];
+  side2: [string, string];
+}
+
+export async function saveLastPlayers(players: LastPlayers): Promise<void> {
+  try {
+    // Nothing worth remembering if the fields were left blank.
+    const any = [...players.side1, ...players.side2].some((n) => n.trim().length > 0);
+    if (!any) return;
+    await AsyncStorage.setItem(LAST_PLAYERS_KEY, JSON.stringify(players));
+  } catch (err) {
+    console.warn('Save players error:', err);
+  }
+}
+
+export async function loadLastPlayers(): Promise<LastPlayers | null> {
+  try {
+    const raw = await AsyncStorage.getItem(LAST_PLAYERS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as LastPlayers;
+  } catch (err) {
+    console.warn('Load players error:', err);
+    return null;
   }
 }
 
