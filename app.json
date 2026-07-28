@@ -43,7 +43,8 @@
           "backgroundColor": "#0D1117",
           "imageWidth": 180
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "eas": {
