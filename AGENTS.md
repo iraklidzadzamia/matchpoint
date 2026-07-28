@@ -196,6 +196,30 @@ resetting its transform flashed it back into place for a frame.
 
 ---
 
+## Building
+
+**iOS cannot be built on this machine.** CocoaPods needs Ruby 3.0 or newer;
+macOS ships 2.6 and Apple no longer updates it. Every route was tried — an
+older CocoaPods, installing `ffi` by hand — and they all end at the same wall.
+Building locally means installing a second Ruby through Homebrew and letting it
+upgrade OpenSSL system-wide.
+
+So builds go through EAS instead, which is the same path a store submission
+takes. `eas.json` has three profiles (note that EAS rejects `//` comment keys,
+so they are documented here rather than inline):
+
+- **`simulator`** — a standalone build that runs on a simulator with no dev
+  server and **no Apple account**. This is the one that proves `app.json` is
+  right: Expo Go supplies its own icon, splash, name and orientation, so none
+  of ours are exercised until a real build exists.
+- **`device`** — installable on a real iPhone. Needs Apple credentials; a free
+  account gives 7-day certificates, a paid one gives a year plus TestFlight.
+- **`production`** — App Store submission.
+
+```bash
+npx eas-cli build --platform ios --profile simulator
+```
+
 ## Still to do
 
 Nothing here blocks a build; the app is ready to package as it stands. Roughly
