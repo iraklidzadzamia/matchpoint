@@ -198,20 +198,46 @@ resetting its transform flashed it back into place for a frame.
 
 ## Still to do
 
-Roughly easiest first:
+Nothing here blocks a build; the app is ready to package as it stands. Roughly
+easiest first.
 
-1. History detail — tapping a match in the list opens nothing.
-2. Remember the last players used, so a regular group is not retyped each time.
-3. Statistics — matches played, head-to-head records. The data is already in
-   history.
-4. A voice picker in settings. The announcer currently picks the best installed
-   English voice itself (British and Enhanced preferred), with no UI.
-5. Localisation. The `t()` scaffolding and `en.ts` exist; there is no second
-   language and no language switch.
-6. Scoring formats from the rulebook that are not offered yet: the 4-game mini
-   set, a tie-break to 7 replacing the final set, and **no-ad for tennis**
-   (used in ATP doubles and US college tennis) — the engine already supports
-   the last one, it is just not exposed.
+**1. History detail.** Tapping a match in the list does nothing at all, which
+reads as broken rather than as missing. It should open the same breakdown the
+match summary shows.
+
+**2. Remember the last players.** Name fields start empty every time, so a
+group that plays together retypes them at every match. Persist the last set
+used and offer it as the default.
+
+**3. Statistics.** Matches played, head-to-head records, win rates. Everything
+needed is already in the saved history; this is a screen, not new data.
+
+**4. Voice picker.** The announcer chooses the best installed English voice
+itself — British and Enhanced preferred — with no UI to override it. Low
+priority; the automatic choice is the right one on most devices.
+
+**5. Localisation.** Every string lives in `src/i18n/en.ts` behind `t()`, so
+the scaffolding is there, but there is one language and no way to switch.
+
+> Check the spoken score before promising a language. iOS has a good Russian
+> voice; it very likely has no Georgian one. If a language has no TTS voice,
+> the interface can still be translated but the umpire has to fall back to
+> English or stay silent — decide which before starting.
+
+**6. Scoring formats from the rulebook that are not offered yet.** The engine
+handles all of these; they are missing from the UI only.
+
+- **No-ad for tennis** — a deciding point at 40:40, the tennis equivalent of
+  golden point, used in ATP doubles and US college tennis. The engine supports
+  it today, but the whole deuce-rule section is hidden for tennis, so a tennis
+  player cannot reach it.
+- **Mini set to 4 games** — a shortened set, for when the court is booked by
+  the hour.
+- **Tie-break to 7 instead of a deciding set** — at one set all, play a
+  tie-break rather than a third set. Related to the super tie-break to 10 that
+  already exists, but a distinct option.
+
+Only worth building if the people using the app actually play these formats.
 
 Then the Apple work: a standalone build (a free Apple ID gives 7-day
 certificates through Xcode; $99/year gives a real one and TestFlight), an App
