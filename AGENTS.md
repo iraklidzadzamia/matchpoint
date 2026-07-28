@@ -220,6 +220,48 @@ so they are documented here rather than inline):
 npx eas-cli build --platform ios --profile simulator
 ```
 
+### Native modules have to be declared here, not inherited
+
+The first three builds would not start at all. Each died on the splash screen
+with `Cannot find native module` — `ExpoAsset`, then `ExpoFontLoader`.
+
+`expo-asset`, `expo-font` and `expo-file-system` were only ever present nested
+inside `node_modules/expo`, never listed in this project's `package.json`.
+Autolinking only looks at declared dependencies, so their native halves were
+left out of the binary. Expo Go bundles all of them itself, which is why the
+app looked perfectly healthy right up until it was built for real.
+
+The app reaches them through `require()` on the sound files and through
+`@expo/vector-icons`. If a new `Cannot find native module X` appears, look for
+packages that ship native code but are not declared:
+
+```bash
+for d in node_modules/expo/node_modules/*/; do
+  n=$(basename "$d")
+  [ -f "$d/expo-module.config.json" ] && [ -d "$d/ios" ] \
+    && echo "$n declared: $(grep -c "\"$n\"" package.json)"
+done
+```
+
+Find them all at once — each rebuild is ten minutes.
+
+### Reading a build that will not start
+
+`xcrun simctl launch <udid> com.matchpoint.scorekeeper` then:
+
+```bash
+xcrun simctl spawn <udid> log show --last 2m \
+  --predicate 'processImagePath CONTAINS "MatchPoint"' --style compact \
+  | grep -iE "cannot find native|unhandled js"
+```
+
+A blank splash screen says nothing on its own; that log says exactly what is
+missing.
+
+`simctl io screenshot` captures the device's physical frame, so a landscape
+screen comes out looking rotated. That is the capture, not the app — rotate the
+image with `ffmpeg -vf transpose=2` before judging the layout.
+
 ## Still to do
 
 Nothing here blocks a build; the app is ready to package as it stands. Roughly
