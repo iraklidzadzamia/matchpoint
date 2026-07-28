@@ -44,7 +44,8 @@
           "imageWidth": 180
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-font"
     ],
     "extra": {
       "eas": {
