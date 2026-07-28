@@ -126,6 +126,16 @@ function checkInvariants(state: MatchState, where: string) {
   for (const i of state.serverPlayerIndex) expect([0, 1]).toContain(i);
   expect(['original', 'swapped']).toContain(state.courtSide);
 
+  // The log only ever grows forward, and its tail agrees with the last event
+  for (let i = 1; i < state.pointLog.length; i++) {
+    expect(state.pointLog[i].at).toBeGreaterThanOrEqual(state.pointLog[i - 1].at);
+  }
+  const lastLogged = state.pointLog[state.pointLog.length - 1];
+  if (lastLogged && state.lastEvent) {
+    expect(lastLogged.winner).toBe(state.lastEvent.winner);
+    expect(lastLogged.type).toBe(state.lastEvent.type);
+  }
+
   // The display never produces something unshowable
   const shown = getDisplayScore(state);
   for (const value of [shown.side1Score, shown.side2Score]) {
@@ -144,9 +154,10 @@ function playMatch(seed: number) {
   const LIMIT = 4000; // a real 5-setter is well under this
   while (state.matchStatus !== 'finished' && points < LIMIT) {
     const winner: PlayerSide = rng() < 0.5 ? 'side1' : 'side2';
-    state = addPoint(state, winner);
+    state = addPoint(state, winner, 1_000_000 + points * 20_000);
     points += 1;
     checkInvariants(state, `seed ${seed} point ${points}`);
+    expect(state.pointLog).toHaveLength(points);
   }
 
   // A match with a random winner each point must always reach an end.
@@ -220,7 +231,10 @@ describe('scoring engine invariants', () => {
 
     const run = () => {
       let state = createMatch({ ...config });
-      for (const winner of sequence) state = addPoint(state, winner);
+      // Fixed times, so the point log is part of what must come out identical.
+      sequence.forEach((winner, i) => {
+        state = addPoint(state, winner, 1_000_000 + i * 30_000);
+      });
       // matchStartTime is a clock reading, so compare everything else
       const { matchStartTime, matchEndTime, ...rest } = state;
       return rest;

@@ -27,6 +27,7 @@ export function createMatch(config: MatchConfig): MatchState {
     matchEndTime: null,
 
     gameHistory: [],
+    pointLog: [],
     lastEvent: null,
   };
 }
@@ -64,6 +65,7 @@ export function toMatchRecord(state: MatchState): MatchRecord | null {
     setsWon: [...state.setsWon],
     winner: state.matchWinner,
     startedAt: state.matchStartTime,
+    pointLog: state.pointLog.map((p) => ({ ...p })),
     durationSec: Math.max(0, Math.floor((endTime - state.matchStartTime) / 1000)),
   };
 }
@@ -108,10 +110,22 @@ export function getDisplayScore(state: MatchState): { side1Score: string; side2S
   };
 }
 
-export function addPoint(state: MatchState, winner: PlayerSide): MatchState {
-  if (state.matchStatus === 'finished') {
-    return state;
-  }
+/**
+ * Records a point and appends it to the match's log.
+ *
+ * `at` is passed in rather than read from the clock inside, so the engine stays
+ * deterministic: the same points and the same times always produce the same
+ * match, which is what the invariant tests rely on.
+ */
+export function addPoint(state: MatchState, winner: PlayerSide, at: number = Date.now()): MatchState {
+  if (state.matchStatus === 'finished') return state;
+
+  const next = applyPoint(state, winner);
+  next.pointLog.push({ at, winner, type: next.lastEvent?.type ?? 'point' });
+  return next;
+}
+
+function applyPoint(state: MatchState, winner: PlayerSide): MatchState {
 
   const winnerIdx = winner === 'side1' ? 0 : 1;
   const loserIdx = winner === 'side1' ? 1 : 0;

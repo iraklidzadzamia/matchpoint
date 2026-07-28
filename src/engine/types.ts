@@ -39,11 +39,24 @@ export interface MatchRecord {
   winner: PlayerSide;
   startedAt: number;
   durationSec: number;
+  pointLog: PointRecord[];
 }
 
 export interface AppSettings {
   voiceAnnounce: boolean;
   maxBrightness: boolean;
+}
+
+/**
+ * One point, as it happened. The winner alone is enough to rebuild the whole
+ * match — the engine is deterministic — so this stays deliberately small; `at`
+ * is what everything else hangs off: rally lengths, a match timeline, and
+ * later, tying a saved video clip to the point it belongs to.
+ */
+export interface PointRecord {
+  at: number;
+  winner: PlayerSide;
+  type: MatchEvent['type'];
 }
 
 export interface MatchEvent {
@@ -80,5 +93,6 @@ export interface MatchState {
   matchEndTime: number | null;
   
   gameHistory: string[];               // e.g. ["15 0", "15 15", "30 15"]
+  pointLog: PointRecord[];             // every point of the match, in order
   lastEvent: MatchEvent | null;
 }

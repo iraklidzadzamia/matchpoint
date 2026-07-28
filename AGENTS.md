@@ -262,6 +262,69 @@ missing.
 screen comes out looking rotated. That is the capture, not the app — rotate the
 image with `ffmpeg -vf transpose=2` before judging the layout.
 
+## The planned rally-replay feature
+
+The intended feature: the camera runs continuously, and scoring a point — from
+the phone or from an Apple Watch — saves the **preceding** N seconds as a clip,
+with N configurable (10 / 20 / 30).
+
+**You cannot record the past**, so this needs a rolling buffer. Three ways, and
+only one of them works:
+
+- *One long recording, trimmed later.* Simple, but a 90-minute match is ~3.6GB
+  at 720p, and nothing in Expo trims video.
+- *Short segments in a ring buffer via `expo-camera`.* Storage is fine, but
+  stopping and restarting a recording costs 200-500ms, so there is a **gap
+  every segment boundary** — the winning shot can land in one.
+- *A native rolling buffer (AVAssetWriter).* Sample buffers go into a circular
+  buffer; the trigger flushes the last N seconds. No gaps, constant memory.
+  **This is the only acceptable option, and it needs Swift** — an Expo native
+  module plus a config plugin. It cannot work in Expo Go, which is fine now
+  that real builds exist.
+
+### Keep it out of the engine
+
+The engine is pure and fuzz-tested over hundreds of random matches; that
+property must survive this feature. It already does not need to change:
+`handleAddPoint` in `useMatch.ts` is the single funnel every point passes
+through, and already calls `audioQueue` from there. The recorder attaches the
+same way.
+
+Put the recorder behind a narrow interface with a real implementation and a
+no-op stub, so the app runs identically with the feature absent:
+
+```ts
+interface RallyRecorder {
+  start(): Promise<void>;
+  capture(meta): Promise<string | null>;  // flush the last N seconds
+  setBufferSeconds(n: number): void;
+}
+```
+
+Store clips in their own table keyed by match and point index — **not** inside
+`MatchState`. Deleting video must never touch a match, and deleting a match
+must not orphan video. The buffer length belongs in `AppSettings`, next to the
+sound and brightness switches.
+
+`MatchState.pointLog` is the groundwork and already exists: every point with
+the time it happened. `addPoint` takes `at` as an argument rather than reading
+the clock, which is what keeps the engine deterministic.
+
+### Before building it
+
+- **It is unusable without the watch.** A phone on a tripod filming the court
+  cannot also be tapped. The watch is what makes the feature possible, so build
+  that first.
+- **Battery**: camera plus a landscape screen at full brightness is roughly 90
+  minutes. Matches run longer.
+- **Heat**: sustained capture throttles the device, and iOS may stop the camera
+  itself.
+- **Storage**: the buffer is tiny, but saved clips are not — 20s at 720p is
+  ~12MB, and a match can have 150 points. Decide a retention policy.
+- **Review and law**: camera and microphone permissions invite questions at App
+  Store review, and filming other people at a club is regulated in some
+  countries.
+
 ## Still to do
 
 Nothing here blocks a build; the app is ready to package as it stands. Roughly

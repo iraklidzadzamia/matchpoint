@@ -1,5 +1,6 @@
 import { createMatch, addPoint, getDisplayScore, getSideNames, toMatchRecord } from '../scoring';
 import { MatchConfig } from '../types';
+import { MatchHistoryStack } from '../history';
 
 describe('MatchPoint Scoring Engine', () => {
   const defaultConfig: MatchConfig = {
@@ -380,6 +381,63 @@ describe('MatchPoint Scoring Engine', () => {
     expect(record!.side1Name).toBe('Irakli');
     expect(record!.side2Name).toBe('Rafael');
     expect(record!.durationSec).toBeGreaterThanOrEqual(0);
+  });
+
+  // Groundwork for tying a saved video clip to the point it belongs to, and
+  // for rally timings.
+  describe('point log', () => {
+    test('records every point in order, with the time it happened', () => {
+      let match = createMatch(defaultConfig);
+      match = addPoint(match, 'side1', 1000);
+      match = addPoint(match, 'side2', 2500);
+      match = addPoint(match, 'side1', 4000);
+
+      expect(match.pointLog).toEqual([
+        { at: 1000, winner: 'side1', type: 'point' },
+        { at: 2500, winner: 'side2', type: 'point' },
+        { at: 4000, winner: 'side1', type: 'point' },
+      ]);
+    });
+
+    test('marks the point that won a game, set or match', () => {
+      let match = createMatch({ ...defaultConfig, totalSets: 1 });
+      match.games = [5, 0];
+      for (let i = 0; i < 4; i++) match = addPoint(match, 'side1', 100 * i);
+
+      expect(match.pointLog.map((p) => p.type)).toEqual(['point', 'point', 'point', 'match']);
+    });
+
+    test('undo takes the point back out of the log', () => {
+      const stack = new MatchHistoryStack();
+      let match = createMatch(defaultConfig);
+      match = addPoint(match, 'side1', 1000);
+      stack.push(match);
+      match = addPoint(match, 'side2', 2000);
+      expect(match.pointLog).toHaveLength(2);
+
+      const restored = stack.pop()!;
+      expect(restored.pointLog).toHaveLength(1);
+    });
+
+    test('a finished match carries its log into history', () => {
+      let match = createMatch({ ...defaultConfig, totalSets: 1 });
+      match.games = [5, 0];
+      for (let i = 0; i < 4; i++) match = addPoint(match, 'side1', 100 * i);
+
+      const record = toMatchRecord(match)!;
+      expect(record.pointLog).toHaveLength(4);
+      expect(record.pointLog[3]).toEqual({ at: 300, winner: 'side1', type: 'match' });
+    });
+
+    test('the log is a copy, so editing the record cannot corrupt the match', () => {
+      let match = createMatch({ ...defaultConfig, totalSets: 1 });
+      match.games = [5, 0];
+      for (let i = 0; i < 4; i++) match = addPoint(match, 'side1', 100 * i);
+
+      const record = toMatchRecord(match)!;
+      record.pointLog[0].at = 999999;
+      expect(match.pointLog[0].at).toBe(0);
+    });
   });
 
   test('getSideNames joins both players in doubles', () => {
