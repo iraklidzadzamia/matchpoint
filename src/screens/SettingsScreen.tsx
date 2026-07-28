@@ -9,6 +9,7 @@ import {
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { MatchConfig, SwapSidesRule, AppSettings } from '../engine/types';
 import { theme } from '../styles/theme';
 import { t } from '../i18n';
@@ -82,7 +83,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       // Reachable from the landscape-locked score screen — see PlayersServingOverlay.
       supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
     >
-      <View style={styles.container}>
+      {/* A modal is its own native root, so it needs its own provider — without
+          one the insets are all zero and the notch sits over the text when this
+          opens in landscape from the score screen. */}
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{t('ui.settings')}</Text>
           <TouchableOpacity style={styles.doneBtn} onPress={handleDone}>
@@ -228,7 +233,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
           </View>
         </ScrollView>
-      </View>
+        </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 };

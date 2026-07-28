@@ -2,6 +2,17 @@ import renderer, { act, ReactTestRenderer } from 'react-test-renderer';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 
+// The real provider renders nothing until it has measured the insets, which
+// never happens off-device.
+jest.mock('react-native-safe-area-context', () => {
+  const { View } = require('react-native');
+  return {
+    SafeAreaProvider: View,
+    SafeAreaView: View,
+    useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  };
+});
+
 import { SettingsScreen } from '../SettingsScreen';
 import { MatchConfig, AppSettings } from '../../engine/types';
 
