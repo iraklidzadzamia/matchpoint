@@ -1,7 +1,7 @@
 # App Store Connect — everything to paste in
 
-The support address is `ballroomtbilisii@gmail.com` — already in both `docs/`
-pages. Put the real URLs in below once GitHub Pages is live.
+Everything below is filled in and checked. The pages are live, the screenshots
+are the right size, and every field fits Apple's limits.
 
 ---
 
@@ -128,24 +128,23 @@ To try it: tap New Match, then Start Match (names are optional). The phone rotat
 
 ---
 
-## URLs — required before you can submit
+## URLs — live, paste them straight in
 
-Both pages are written and live in `docs/`. To host them free:
-
-1. Push this repository to GitHub.
-2. Repository → Settings → Pages → Source: *Deploy from a branch*, branch
-   `main`, folder `/docs`.
-3. A minute later they are at:
+GitHub Pages serves them from `main` / `docs`. Both were fetched and return 200.
 
 | Field | URL |
 |---|---|
-| **Support URL** (required) | `https://<user>.github.io/<repo>/` |
-| **Privacy Policy URL** (required) | `https://<user>.github.io/<repo>/privacy.html` |
+| **Support URL** (required) | `https://iraklidzadzamia.github.io/matchpoint/` |
+| **Privacy Policy URL** (required) | `https://iraklidzadzamia.github.io/matchpoint/privacy.html` |
 | **Marketing URL** (optional) | leave empty |
 
 > Both pages publish `ballroomtbilisii@gmail.com`, kept separate from the main
 > address on purpose — a public page collects spam. Use the same one for the
 > App Review contact so replies land in one place.
+>
+> Editing `docs/` and pushing to `main` republishes them within a minute. The
+> privacy policy must stay true: if a future version collects anything, that
+> page has to say so before the version ships.
 
 ---
 
@@ -182,7 +181,7 @@ the real engine, so every number in them is one the app actually produced.
 
 1. **Wait for the enrollment email.** Nothing below works until the membership
    is active — App Store Connect will not let you create the app record.
-2. Push to GitHub and switch on Pages.
+2. ~~Push to GitHub and switch on Pages.~~ Done — the URLs above are live.
 3. Create the app record in App Store Connect with the values above.
 4. Build: `npx eas-cli build --platform ios --profile production`. EAS asks for
    the Apple ID and creates the certificates itself. **Do this yourself — it
