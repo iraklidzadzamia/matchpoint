@@ -1,7 +1,7 @@
 # App Store Connect — everything to paste in
 
-Fill the two `REPLACE_WITH_YOUR_EMAIL` placeholders in `docs/` first, and put
-the real URLs in below once GitHub Pages is live.
+The support address is `ballroomtbilisii@gmail.com` — already in both `docs/`
+pages. Put the real URLs in below once GitHub Pages is live.
 
 ---
 
@@ -143,9 +143,9 @@ Both pages are written and live in `docs/`. To host them free:
 | **Privacy Policy URL** (required) | `https://<user>.github.io/<repo>/privacy.html` |
 | **Marketing URL** (optional) | leave empty |
 
-> Both pages contain `REPLACE_WITH_YOUR_EMAIL`. Decide what address to publish —
-> a public page collects spam, so a fresh address or an alias beats your main
-> one — and replace it in `docs/index.html` and `docs/privacy.html`.
+> Both pages publish `ballroomtbilisii@gmail.com`, kept separate from the main
+> address on purpose — a public page collects spam. Use the same one for the
+> App Review contact so replies land in one place.
 
 ---
 
@@ -182,7 +182,7 @@ the real engine, so every number in them is one the app actually produced.
 
 1. **Wait for the enrollment email.** Nothing below works until the membership
    is active — App Store Connect will not let you create the app record.
-2. Push to GitHub, switch on Pages, and fill the two email placeholders.
+2. Push to GitHub and switch on Pages.
 3. Create the app record in App Store Connect with the values above.
 4. Build: `npx eas-cli build --platform ios --profile production`. EAS asks for
    the Apple ID and creates the certificates itself. **Do this yourself — it
