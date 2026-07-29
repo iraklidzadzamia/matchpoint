@@ -8,10 +8,16 @@ export interface PlayerInfo {
   player2?: string;
 }
 
+// Games needed to take a set. 6 is the tournament set; 4 is what people play
+// when the court is booked for an hour; 8 is a pro set, usually played alone
+// instead of a best-of-three.
+export type GamesPerSet = 4 | 6 | 8;
+
 export interface MatchConfig {
   sport: Sport;
   format: MatchFormat;
   totalSets: 1 | 3 | 5;
+  gamesPerSet: GamesPerSet;
   tieBreakEnabled: boolean;
   matchTieBreakEnabled: boolean;
   tieBreakTo: 7 | 10;

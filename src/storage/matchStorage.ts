@@ -21,6 +21,7 @@ export const defaultMatchConfig: MatchConfig = {
   sport: 'tennis',
   format: 'singles',
   totalSets: 3,
+  gamesPerSet: 6,
   tieBreakEnabled: true,
   matchTieBreakEnabled: false,
   tieBreakTo: 7,

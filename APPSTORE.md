@@ -62,6 +62,9 @@ The score screen is landscape, in big type, at full brightness, and it will not 
 KNOWS THE ACTUAL RULES
 Sets to six with a two-game margin, tie-breaks at six all counted in plain numbers, the serve alternating one point then two, and the next set opened by the pair that did not open the tie-break. Checked against the FIP Rules of Padel, 1 January 2026 edition.
 
+SCORES THE MATCH YOU ARE ACTUALLY PLAYING
+Not every match is a tournament match. Set the games it takes to win a set: six for the full thing, four when the court is booked for an hour, or eight for a pro set played on its own. The tie-break follows along.
+
 ALL THREE WAYS TO PLAY 40:40
 • Like in tennis — win two points in a row, advantages never run out
 • Star point — up to two advantages, then a deciding point. The rule the 2026 professional padel tour plays

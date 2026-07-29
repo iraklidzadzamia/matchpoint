@@ -143,8 +143,17 @@ option, and it was mistakenly deleted before the rulebook was checked.
 Star point and golden point are **padel rules**. Tennis matches force
 `goldenPointEnabled: false`, and the settings section is hidden for tennis.
 
-Other rules the engine implements, all rulebook-checked: sets to 6 with a
-2-game margin (7-5 at 5-5, tie-break at 6-6), tie-break to 7 by 2, serve
+Sets are 6 games by default but `gamesPerSet` also allows 4 and 8 — a short
+set for when the court is booked by the hour, and a pro set played on its own.
+The tie-break follows the same number, so a short set breaks at 4-4. The
+literal `6` used to appear in four places in `scoring.ts`; they all read
+`gamesToWin(config)` now, which falls back to 6 because a match already in
+progress on someone's phone was saved without the field. Do not delete that
+fallback — the config comes back from storage as untyped JSON, so TypeScript
+cannot see the hole.
+
+Other rules the engine implements, all rulebook-checked: a 2-game margin
+(7-5 at 5-5, tie-break at 6-6), tie-break to 7 by 2, serve
 alternating one point then two, ends changed on odd games and every 6 tie-break
 points, and the next set opened by the pair that did **not** open the
 tie-break (not simply whoever served last — that is only the same on even

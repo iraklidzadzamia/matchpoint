@@ -13,6 +13,7 @@ const baseConfig: MatchConfig = {
   sport: 'padel',
   format: 'doubles',
   totalSets: 3,
+  gamesPerSet: 6,
   tieBreakEnabled: true,
   matchTieBreakEnabled: false,
   tieBreakTo: 7,

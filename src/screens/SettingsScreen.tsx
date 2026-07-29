@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { MatchConfig, SwapSidesRule, AppSettings } from '../engine/types';
+import { MatchConfig, SwapSidesRule, GamesPerSet, AppSettings } from '../engine/types';
 import { theme } from '../styles/theme';
 import { t } from '../i18n';
 
@@ -50,6 +50,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [matchTieBreak, setMatchTieBreak] = useState(config.matchTieBreakEnabled);
   const [swapSides, setSwapSides] = useState<SwapSidesRule>(config.swapSides);
   const [totalSets, setTotalSets] = useState<1 | 3 | 5>(config.totalSets);
+  const [gamesPerSet, setGamesPerSet] = useState<GamesPerSet>(config.gamesPerSet);
 
   // Re-sync the form each time the sheet opens; the config can have changed
   // (new match started, rules edited) while this component stayed mounted.
@@ -60,6 +61,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     setMatchTieBreak(config.matchTieBreakEnabled);
     setSwapSides(config.swapSides);
     setTotalSets(config.totalSets);
+    setGamesPerSet(config.gamesPerSet);
   }, [visible, config]);
 
   const handleDone = () => {
@@ -70,6 +72,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       matchTieBreakEnabled: matchTieBreak,
       swapSides,
       totalSets,
+      gamesPerSet,
     });
     onClose();
   };
@@ -132,7 +135,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
             {/* Tie-Break Toggle */}
             <View style={styles.row}>
-              <Text style={styles.rowLabel}>{t('ui.tieBreak')}</Text>
+              <Text style={styles.rowLabel}>
+                {t('ui.tieBreak', { at: String(gamesPerSet) })}
+              </Text>
               <Switch
                 value={tieBreak}
                 onValueChange={setTieBreak}
@@ -200,6 +205,33 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                       style={[
                         styles.stepperText,
                         totalSets === val && styles.stepperTextActive,
+                      ]}
+                    >
+                      {val}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Games needed to take a set — 4 for a short set, 8 for a pro set */}
+            <View style={styles.rowSubSection}>
+              <Text style={styles.rowLabel}>{t('ui.gamesPerSet')}</Text>
+              <Text style={styles.rowSubLabel}>{t('ui.gamesPerSetHint')}</Text>
+              <View style={[styles.stepperRow, styles.stepperRowBlock]}>
+                {([4, 6, 8] as const).map((val) => (
+                  <TouchableOpacity
+                    key={val}
+                    style={[
+                      styles.stepperBtn,
+                      gamesPerSet === val && styles.stepperBtnActive,
+                    ]}
+                    onPress={() => setGamesPerSet(val)}
+                  >
+                    <Text
+                      style={[
+                        styles.stepperText,
+                        gamesPerSet === val && styles.stepperTextActive,
                       ]}
                     >
                       {val}
@@ -348,6 +380,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.glass.border,
+  },
+  // The stepper sits inline on the right in a `row`; under a label and hint it
+  // needs to start at the left edge with a gap above.
+  stepperRowBlock: {
+    justifyContent: 'flex-start',
+    marginTop: 10,
   },
   segmentedRow: {
     flexDirection: 'row',

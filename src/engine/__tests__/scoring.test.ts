@@ -7,6 +7,7 @@ describe('MatchPoint Scoring Engine', () => {
     sport: 'tennis',
     format: 'singles',
     totalSets: 3,
+    gamesPerSet: 6,
     tieBreakEnabled: true,
     matchTieBreakEnabled: false,
     tieBreakTo: 7,
@@ -447,5 +448,65 @@ describe('MatchPoint Scoring Engine', () => {
       side1: { player1: 'A1', player2: 'A2' },
     };
     expect(getSideNames(config, 'side1')).toBe('A1 & A2');
+  });
+
+  describe('short and pro sets', () => {
+    /** Hands `side` four straight points, taking one clean game. */
+    const winGame = (state: any, side: 'side1' | 'side2') => {
+      for (let i = 0; i < 4; i++) state = addPoint(state, side, 0);
+      return state;
+    };
+
+    test('a short set is won at four games, not six', () => {
+      let match = createMatch({ ...defaultConfig, gamesPerSet: 4, totalSets: 1 });
+      for (let i = 0; i < 4; i++) match = winGame(match, 'side1');
+
+      expect(match.matchStatus).toBe('finished');
+      expect(match.completedSets).toEqual([[4, 0]]);
+    });
+
+    test('a short set still needs a two-game margin', () => {
+      let match = createMatch({ ...defaultConfig, gamesPerSet: 4, totalSets: 1 });
+      for (let i = 0; i < 3; i++) { match = winGame(match, 'side1'); match = winGame(match, 'side2'); }
+      match = winGame(match, 'side1');
+
+      // 4-3 is not a set — the margin is one.
+      expect(match.matchStatus).toBe('playing');
+      expect(match.games).toEqual([4, 3]);
+    });
+
+    test('a short set goes to a tie-break at four all', () => {
+      let match = createMatch({ ...defaultConfig, gamesPerSet: 4, totalSets: 1 });
+      for (let i = 0; i < 4; i++) { match = winGame(match, 'side1'); match = winGame(match, 'side2'); }
+
+      expect(match.games).toEqual([4, 4]);
+      expect(match.isTieBreak).toBe(true);
+    });
+
+    test('six games does not win a pro set', () => {
+      let match = createMatch({ ...defaultConfig, gamesPerSet: 8, totalSets: 1 });
+      for (let i = 0; i < 6; i++) match = winGame(match, 'side1');
+
+      expect(match.matchStatus).toBe('playing');
+      expect(match.games).toEqual([6, 0]);
+
+      for (let i = 0; i < 2; i++) match = winGame(match, 'side1');
+      expect(match.matchStatus).toBe('finished');
+      expect(match.completedSets).toEqual([[8, 0]]);
+    });
+
+    test('a match saved before short sets existed still scores to six', () => {
+      // Configs restored from storage predate the field entirely.
+      const legacy = { ...defaultConfig, totalSets: 1 } as MatchConfig;
+      delete (legacy as Partial<MatchConfig>).gamesPerSet;
+
+      let match = createMatch(legacy);
+      for (let i = 0; i < 4; i++) match = winGame(match, 'side1');
+      expect(match.matchStatus).toBe('playing');
+
+      for (let i = 0; i < 2; i++) match = winGame(match, 'side1');
+      expect(match.matchStatus).toBe('finished');
+      expect(match.completedSets).toEqual([[6, 0]]);
+    });
   });
 });

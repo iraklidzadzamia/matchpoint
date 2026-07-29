@@ -32,6 +32,7 @@ const config: MatchConfig = {
   sport: 'tennis',
   format: 'singles',
   totalSets: 1,
+  gamesPerSet: 6,
   tieBreakEnabled: true,
   matchTieBreakEnabled: false,
   tieBreakTo: 7,

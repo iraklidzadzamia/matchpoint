@@ -1,5 +1,12 @@
 import { MatchConfig, MatchState, PlayerSide, MatchRecord } from './types';
 
+// Matches saved before short sets existed have no gamesPerSet, and one of them
+// may still be in progress on someone's phone. Read it through here so an old
+// match keeps scoring as the tournament set it was started as.
+function gamesToWin(config: MatchConfig): number {
+  return config.gamesPerSet ?? 6;
+}
+
 export function createMatch(config: MatchConfig): MatchState {
   return {
     config,
@@ -212,7 +219,9 @@ function applyPoint(state: MatchState, winner: PlayerSide): MatchState {
   if (winsGame) {
     const projectedGames = newState.games[winnerIdx] + 1;
     const isBreakPoint = winner !== newState.serving;
-    const isSetPoint = projectedGames >= 6 && projectedGames - newState.games[loserIdx] >= 2;
+    const isSetPoint =
+      projectedGames >= gamesToWin(newState.config) &&
+      projectedGames - newState.games[loserIdx] >= 2;
     const setsNeeded = Math.ceil(newState.config.totalSets / 2);
     const isMatchPoint = isSetPoint && newState.setsWon[winnerIdx] === setsNeeded - 1;
     pointFlags = { isBreakPoint, isSetPoint, isMatchPoint };
@@ -268,7 +277,10 @@ function applyPoint(state: MatchState, winner: PlayerSide): MatchState {
   const isBreakP = winner !== newState.serving && onePointFromGame;
 
   const projectedGames = newState.games[winnerIdx] + 1;
-  const isSetP = onePointFromGame && projectedGames >= 6 && projectedGames - newState.games[loserIdx] >= 2;
+  const isSetP =
+    onePointFromGame &&
+    projectedGames >= gamesToWin(newState.config) &&
+    projectedGames - newState.games[loserIdx] >= 2;
 
   const setsNeeded = Math.ceil(newState.config.totalSets / 2);
   const isMatchP = isSetP && newState.setsWon[winnerIdx] === setsNeeded - 1;
@@ -338,7 +350,10 @@ function winGame(
   let isSetWon = false;
   if (fromTieBreak) {
     isSetWon = true;
-  } else if (currentWinnerGames >= 6 && currentWinnerGames - currentLoserGames >= 2) {
+  } else if (
+    currentWinnerGames >= gamesToWin(state.config) &&
+    currentWinnerGames - currentLoserGames >= 2
+  ) {
     isSetWon = true;
   }
 
@@ -346,8 +361,10 @@ function winGame(
     return winSet(state, winner, pointFlags);
   }
 
-  // Check if next game is Tie-Break (6:6)
-  if (g1 === 6 && g2 === 6 && state.config.tieBreakEnabled) {
+  // Check if next game is a tie-break — at 6:6 in a normal set, and at the
+  // matching score in a short or pro set.
+  const tieBreakAt = gamesToWin(state.config);
+  if (g1 === tieBreakAt && g2 === tieBreakAt && state.config.tieBreakEnabled) {
     const setsNeeded = Math.ceil(state.config.totalSets / 2);
     const isFinalSet = state.setsWon[0] === setsNeeded - 1 && state.setsWon[1] === setsNeeded - 1;
     

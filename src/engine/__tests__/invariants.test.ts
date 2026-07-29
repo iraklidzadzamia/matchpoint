@@ -30,6 +30,7 @@ function randomConfig(rng: () => number): MatchConfig {
     sport: pick(SPORTS),
     format: pick(FORMATS),
     totalSets: pick(TOTAL_SETS),
+    gamesPerSet: 6,
     tieBreakEnabled: rng() < 0.85,
     matchTieBreakEnabled: rng() < 0.4,
     tieBreakTo: 7,
