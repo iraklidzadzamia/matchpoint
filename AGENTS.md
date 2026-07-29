@@ -288,6 +288,27 @@ Copy `/tmp/mp/assets/.` over `$APP/assets/` as well if you added an image or a
 sound. A full EAS build is still needed for anything native — a new package, an
 `app.json` change, an icon.
 
+### Checking a build before Apple does
+
+App Store rejections for the icon and the plist arrive minutes after upload and
+cost a whole build cycle. The `simulator` profile needs no Apple account, so
+the same things can be checked for free beforehand — download the artifact,
+unpack it, and read the binary:
+
+```bash
+/usr/libexec/PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption" MatchPoint.app/Info.plist
+/usr/libexec/PlistBuddy -c "Print :UIDeviceFamily" MatchPoint.app/Info.plist   # 1 = iPhone only
+xcrun assetutil --info MatchPoint.app/Assets.car | grep -A3 AppIcon
+```
+
+The one that matters for **ITMS-90717** is the 1024×1024 entry in `Assets.car`
+with `"Opaque": true`. The loose `AppIcon60x60@2x.png` files do carry an alpha
+channel — Expo's resizer adds one back — but it is fully opaque and Apple does
+not check those. Do not chase them.
+
+Verified on the build of 29 July 2026: encryption `false`, device family `[1]`,
+marketing icon opaque.
+
 ### Putting a finished match into history without playing one
 
 Reaching the match summary by tapping takes about a hundred taps. AsyncStorage
