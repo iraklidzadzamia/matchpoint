@@ -47,16 +47,22 @@ def draw_ball(img: Image.Image, cx: float, cy: float, r: float):
     img.paste(seams, (0, 0), clipped)
 
 
-def render(path: str, *, background, ball_fraction: float):
+def render(path: str, *, background, ball_fraction: float, flatten: bool = False):
     canvas = SIZE * SS
     img = Image.new("RGBA", (canvas, canvas), background)
     draw_ball(img, canvas / 2, canvas / 2, canvas * ball_fraction / 2)
-    img.resize((SIZE, SIZE), Image.LANCZOS).save(path)
-    print(f"{path}  {SIZE}x{SIZE}")
+    out = img.resize((SIZE, SIZE), Image.LANCZOS)
+    # The App Store rejects an icon that carries an alpha channel at all, even
+    # a fully opaque one (ITMS-90717). Drop it rather than rely on the build
+    # pipeline to flatten it for us.
+    if flatten:
+        out = out.convert("RGB")
+    out.save(path)
+    print(f"{path}  {SIZE}x{SIZE}  {out.mode}")
 
 
 # Full-bleed square; iOS applies its own rounding.
-render(f"{OUT}/icon.png", background=BG + (255,), ball_fraction=0.68)
+render(f"{OUT}/icon.png", background=BG + (255,), ball_fraction=0.68, flatten=True)
 # The splash sits on the theme background already, so the mark is transparent.
 render(f"{OUT}/splash-icon.png", background=(0, 0, 0, 0), ball_fraction=0.92)
 # Android foreground needs generous padding for its own mask.
