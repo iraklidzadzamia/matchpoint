@@ -461,8 +461,22 @@ statistics rather than showing a confident zero.
 
 ### The watch is the remote, not a second screen
 
-One player is chosen as the leader and wears the watch, which is the pult for
-the whole match:
+**Owner and leader are two different roles.** The owner is the person whose app
+it is: marked once, never changes, and decides whose personal statistics the app
+shows. The owner **does not always play** — in a group of six, two sit out every
+match, and the phone may well belong to one of them. A match the owner merely
+scored must not land in their own record.
+
+The leader is whoever holds the remote for this match, and **must be one of the
+players on court**: "one tap scores for my side" means nothing to somebody on
+the bench, who has no side. When the owner sits out, the remote passes to a
+player.
+
+Several watches are wanted eventually with the leader easy to hand over. That
+needs no extra machinery — each watch is another device on the same transport,
+and "who is the remote" is a mark that moves.
+
+The leader wears the watch, which is the pult for the whole match:
 
 | Gesture | Means |
 |---|---|
