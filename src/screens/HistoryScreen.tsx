@@ -1,16 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
+  SectionList,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MatchRecord } from '../engine/types';
 import { loadHistory, clearHistory, deleteFromHistory } from '../storage/matchStorage';
+import { groupIntoSessions, sessionDayLabel } from '../engine/sessions';
 import { MatchScoreLines } from '../components/MatchScoreLines';
 import { MatchDetailScreen } from './MatchDetailScreen';
 import { SwipeBackView } from '../components/SwipeBackView';
@@ -22,11 +23,15 @@ interface HistoryScreenProps {
   onBack: () => void;
 }
 
-function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
+/**
+ * The time of day, not the date: the session header above already says which
+ * day it was, and inside an outing the useful thing is the order the matches
+ * were played in.
+ */
+function formatTime(ms: number): string {
+  return new Date(ms).toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
@@ -47,7 +52,7 @@ const MatchRow: React.FC<{
         {record.sport === 'tennis' ? t('ui.tennis') : t('ui.padel')} ·{' '}
         {record.format === 'singles' ? t('ui.singles') : t('ui.doubles')}
       </Text>
-      <Text style={styles.metaText}>{formatDate(record.startedAt)}</Text>
+      <Text style={styles.metaText}>{formatTime(record.startedAt)}</Text>
     </View>
 
     <MatchScoreLines
@@ -117,6 +122,27 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
   };
 
   const isEmpty = records !== null && records.length === 0;
+
+  // One section per outing. A session with a single match says so plainly rather
+  // than reading "1 matches", and the win-loss part is dropped when none of the
+  // matches knew which side was yours.
+  const sections = useMemo(() => {
+    return groupIntoSessions(records ?? []).map((session) => {
+      const judged = session.won + session.lost;
+      const count =
+        session.played === 1
+          ? t('ui.sessionOneMatch')
+          : t('ui.sessionMatches', { count: String(session.played) });
+      return {
+        day: sessionDayLabel(session.startedAt, {
+          today: t('ui.today'),
+          yesterday: t('ui.yesterday'),
+        }),
+        meta: judged > 0 ? `${count} · ${session.won}–${session.lost}` : count,
+        data: session.matches,
+      };
+    });
+  }, [records]);
   const openRecord = records?.find((r) => r.id === openId) ?? null;
 
   if (openRecord) {
@@ -157,12 +183,19 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
           <Text style={styles.emptyText}>{t('ui.historyEmptyMessage')}</Text>
         </View>
       ) : (
-        <FlatList
-          data={records ?? []}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <MatchRow record={item} onOpen={(r) => setOpenId(r.id)} onDelete={handleDeleteOne} />
           )}
+          renderSectionHeader={({ section }) => (
+            <View style={styles.sessionHeader}>
+              <Text style={styles.sessionDay}>{section.day}</Text>
+              <Text style={styles.sessionMeta}>{section.meta}</Text>
+            </View>
+          )}
+          stickySectionHeadersEnabled={false}
           contentContainerStyle={styles.listContent}
         />
       )}
@@ -194,6 +227,24 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     fontSize: 18,
     fontWeight: '800',
+  },
+  sessionHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xs,
+  },
+  sessionDay: {
+    color: theme.colors.text.primary,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  sessionMeta: {
+    color: theme.colors.text.muted,
+    fontSize: 13,
+    fontVariant: ['tabular-nums'],
   },
   listContent: {
     padding: theme.spacing.md,

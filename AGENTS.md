@@ -318,6 +318,27 @@ not check those. Do not chase them.
 Verified on the build of 29 July 2026: encryption `false`, device family `[1]`,
 marketing icon opaque.
 
+## Sessions are derived, never stored
+
+An outing — court booked, several matches, everyone goes home — is worked out
+from `startedAt` and `durationSec` in `sessions.ts`. Nothing is written down for
+it, which is the point: sessions apply retroactively to every match already
+saved.
+
+Two details that are easy to get wrong:
+
+- **Measure the gap from when a match ended, not when it started.** Two matches
+  starting three hours apart are the same outing if the first one ran two hours.
+- **Never group by calendar day.** A session that starts at 23:30 and finishes
+  after midnight is one session, and a day boundary would cut it in half.
+
+The three-hour default is a judgement, not a rule: long enough to survive a
+coffee break or waiting for a fourth player, short enough that morning and
+evening read as two outings.
+
+Because the session header carries the day, each match row inside it shows the
+**time**, not the date — the useful thing within an outing is the order.
+
 ## The point log records the server, and that cannot be backfilled
 
 Each `PointRecord` carries `served` and `servedByPlayer`. The engine always knew
