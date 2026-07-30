@@ -18,11 +18,12 @@ import { ScoreScreen } from './src/screens/ScoreScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { MatchSummaryScreen } from './src/screens/MatchSummaryScreen';
 import { HistoryScreen } from './src/screens/HistoryScreen';
+import { StatsScreen } from './src/screens/StatsScreen';
 import { scoreAnnouncer } from './src/audio/scoreAnnouncer';
 import { soundEffects } from './src/audio/soundEffects';
 import { audioQueue } from './src/audio/audioQueue';
 
-type Screen = 'home' | 'setup' | 'score' | 'summary' | 'history';
+type Screen = 'home' | 'setup' | 'score' | 'summary' | 'history' | 'stats';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -142,12 +143,19 @@ export default function App() {
           onContinueMatch={handleContinueMatch}
           onOpenSettings={() => setSettingsVisible(true)}
           onOpenHistory={() => setCurrentScreen('history')}
+          onOpenStats={() => setCurrentScreen('stats')}
         />
       )}
 
       {currentScreen === 'history' && (
         <View style={StyleSheet.absoluteFill}>
           <HistoryScreen onBack={() => setCurrentScreen('home')} />
+        </View>
+      )}
+
+      {currentScreen === 'stats' && (
+        <View style={StyleSheet.absoluteFill}>
+          <StatsScreen onBack={() => setCurrentScreen('home')} />
         </View>
       )}
 

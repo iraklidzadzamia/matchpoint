@@ -71,6 +71,7 @@ export function toMatchRecord(state: MatchState): MatchRecord | null {
     setScores: state.completedSets.map((s) => [...s] as [number, number]),
     setsWon: [...state.setsWon],
     winner: state.matchWinner,
+    yourSide: state.config.scoreKeeper,
     startedAt: state.matchStartTime,
     pointLog: state.pointLog.map((p) => ({ ...p })),
     durationSec: Math.max(0, Math.floor((endTime - state.matchStartTime) / 1000)),

@@ -46,6 +46,11 @@ export interface MatchRecord {
   startedAt: number;
   durationSec: number;
   pointLog: PointRecord[];
+  // Which side the person holding the phone was on. Without it a finished match
+  // cannot say whether *you* won, only that side 1 or side 2 did — so every
+  // total across matches would be meaningless. Optional because matches saved
+  // before this field existed genuinely do not know.
+  yourSide?: PlayerSide;
 }
 
 export interface AppSettings {

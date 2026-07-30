@@ -318,6 +318,29 @@ not check those. Do not chase them.
 Verified on the build of 29 July 2026: encryption `false`, device family `[1]`,
 marketing icon opaque.
 
+## Totals across matches: `yourSide` is what makes them mean anything
+
+A `MatchRecord` used to save only that side 1 or side 2 won. Which side the
+person holding the phone was on lived in `MatchConfig.scoreKeeper` and was
+thrown away when the match finished — so "matches won" could not be computed at
+all, only "matches where side 1 won", which means nothing once names move
+between sides. `toMatchRecord` now copies it across as `yourSide`.
+
+It is **optional**, because records written before it existed genuinely do not
+know, and `careerStats.ts` never guesses:
+
+- they still count towards `played` — they happened
+- they cannot count towards `won` or `lost`
+- `winRate` divides by `ranked`, not by `played`
+- an unjudgeable match in the middle of a run does not break `currentStreak`
+
+That is why the screen shows a line admitting how many matches it could not
+judge. Do not "simplify" this by assuming side 1, and do not drop those records
+from the count — both are quietly wrong in a way nobody would notice.
+
+The partner in doubles is read as the second name on your own side, since
+nothing records which of the pair held the phone.
+
 ### Putting a finished match into history without playing one
 
 Reaching the match summary by tapping takes about a hundred taps. AsyncStorage

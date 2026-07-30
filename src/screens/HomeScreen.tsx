@@ -26,6 +26,7 @@ interface HomeScreenProps {
   onContinueMatch: () => void;
   onOpenSettings: () => void;
   onOpenHistory: () => void;
+  onOpenStats: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -34,6 +35,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onContinueMatch,
   onOpenSettings,
   onOpenHistory,
+  onOpenStats,
 }) => {
   usePortraitOrientation();
 
@@ -95,15 +97,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.historyBar} onPress={onOpenHistory} activeOpacity={0.7}>
-        <Ionicons name="time-outline" size={19} color={theme.colors.text.secondary} />
-        <Text style={styles.historyBarText}>{t('ui.history')}</Text>
+      <View style={styles.footerRow}>
+        <TouchableOpacity style={styles.historyBar} onPress={onOpenHistory} activeOpacity={0.7}>
+          <Ionicons name="time-outline" size={19} color={theme.colors.text.secondary} />
+          <Text style={styles.historyBarText}>{t('ui.history')}</Text>
+          {history.length > 0 && (
+            <View style={styles.countPill}>
+              <Text style={styles.countText}>{history.length}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Only worth opening once something has been played. */}
         {history.length > 0 && (
-          <View style={styles.countPill}>
-            <Text style={styles.countText}>{history.length}</Text>
-          </View>
+          <TouchableOpacity style={styles.statsBar} onPress={onOpenStats} activeOpacity={0.7}>
+            <Ionicons name="stats-chart-outline" size={18} color={theme.colors.text.secondary} />
+            <Text style={styles.historyBarText}>{t('ui.stats')}</Text>
+          </TouchableOpacity>
         )}
-      </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -200,14 +212,31 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
   },
+  footerRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
+  },
   historyBar: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 14,
-    marginHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.bg.surface,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.glass.border,
+  },
+  statsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: theme.spacing.md,
     backgroundColor: theme.colors.bg.surface,
     borderRadius: theme.radius.full,
     borderWidth: 1,

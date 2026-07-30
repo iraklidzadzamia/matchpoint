@@ -71,6 +71,24 @@ export const en = {
     clearHistoryMessage: 'All saved results will be deleted. This cannot be undone.',
     // Match detail
     matchDetail: 'Match',
+    stats: 'Your Record',
+    statsEmpty: 'Play a match and it will show up here.',
+    statPlayed: 'Played',
+    statWon: 'Won',
+    statLost: 'Lost',
+    statWinRate: 'Win rate',
+    statStreak: 'Win streak',
+    statOnCourt: 'On court',
+    statPoints: 'Points played',
+    statBySport: 'By sport',
+    statOpponents: 'Played against',
+    statPartners: 'Played with',
+    // Two whole sentences rather than a pluralised noun — "1 match … they count"
+    // is the kind of seam that makes an app feel machine-written.
+    statUnrankedOne:
+      'One older match never recorded which side you were on, so it counts as played but not as won or lost.',
+    statUnrankedMany:
+      '{count} older matches never recorded which side you were on, so they count as played but not as won or lost.',
     duration: 'Duration',
     totalPoints: 'Points played',
     pointsWon: 'Points won',
