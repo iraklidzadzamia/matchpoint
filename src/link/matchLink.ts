@@ -26,11 +26,27 @@ export class MatchLink {
   /** Called with what is nearby, while browsing. */
   onPeers: ((peers: PeerInfo[]) => void) | null = null;
 
+  private stopWatchingConnection: (() => void) | null = null;
+
   constructor(
     private transport: Transport,
     public readonly role: Role
   ) {
     this.stopListening = transport.onMessage((message) => this.receive(message));
+
+    // Connecting is not instant: inviting a peer only starts a handshake, and
+    // anything sent before it completes goes nowhere. So the opening message
+    // waits for the connection to actually exist.
+    this.stopWatchingConnection =
+      transport.onConnection?.((state) => {
+        if (state !== 'connected') return;
+        if (this.role === 'scoreboard') {
+          // Somebody just joined: send them the match without being asked.
+          void this.publish();
+        } else {
+          void this.transport.send({ kind: 'clock', sentAt: Date.now() });
+        }
+      }) ?? null;
   }
 
   /** How far this device's clock is behind the scoreboard's, in milliseconds. */
@@ -62,7 +78,13 @@ export class MatchLink {
     await this.transport.connect(peerId);
     this.stopBrowsing?.();
     this.stopBrowsing = null;
-    await this.transport.send({ kind: 'clock', sentAt: Date.now() });
+
+    // A transport that reports connections sends the opening message itself,
+    // once there is a connection to send it down. One that does not — the
+    // in-memory one — is connected the moment it is asked, so send it now.
+    if (!this.transport.onConnection) {
+      await this.transport.send({ kind: 'clock', sentAt: Date.now() });
+    }
   }
 
   /**
@@ -89,6 +111,8 @@ export class MatchLink {
   }
 
   async leave(): Promise<void> {
+    this.stopWatchingConnection?.();
+    this.stopWatchingConnection = null;
     this.stopBrowsing?.();
     this.stopBrowsing = null;
     this.stopListening?.();

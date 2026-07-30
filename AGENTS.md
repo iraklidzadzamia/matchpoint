@@ -396,17 +396,30 @@ The effect that owns the session deliberately depends on the switch alone, not
 on the match state. Following the state would tear the session down and rebuild
 it on every point, which is precisely the opposite of what it is for.
 
-### What has and has not been proven
+### Sending before the connection exists
 
-Proven: the protocol and roles, against an in-memory transport (11 tests); that
-the native module loads and is reachable from JavaScript; that advertising
-starts without error and shows the right code.
+Inviting a peer only *starts* a handshake. Anything sent between the invitation
+and the session actually reaching `.connected` goes nowhere — silently, with no
+error. The first live test looked exactly like this: the scoreboard said "a
+device is connected" while the joining phone sat on a spinner forever, because
+its opening message had left before there was anything to leave down.
 
-**Not proven: two devices actually finding each other.** That needs two
-simulators or two phones, and one simulator was deleted to free disk. Multipeer
-between simulators on one Mac usually works over the host network; Bluetooth
-does not exist there at all, so a court with no Wi-Fi can only be tested on real
-hardware.
+So the opening message waits for the connection to be reported. The scoreboard
+publishes the match on the same signal rather than waiting to be asked. A
+transport with no `onConnection` — the in-memory one — is connected the instant
+it is asked, and sends immediately.
+
+This is not reachable from the loopback tests. Only two devices show it.
+
+### Verified end to end, on two simulators
+
+Two simulators found each other, the code matched on both, the joining phone
+received the running match, and a point scored on the scoreboard appeared on the
+second screen. Multipeer discovery works between simulators over the host's
+network.
+
+**Bluetooth still is not tested.** Simulators have none, so a court with no Wi-Fi
+can only be proven on real hardware.
 
 ### A camera needs the link least
 
