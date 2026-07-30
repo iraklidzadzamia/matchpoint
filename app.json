@@ -10,7 +10,12 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.matchpoint.scorekeeper",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocalNetworkUsageDescription": "MatchPoint uses the local network to show the score on a second phone and to line up video from extra cameras. Nothing leaves your devices.",
+        "NSBonjourServices": [
+          "_matchpoint-mp._tcp",
+          "_matchpoint-mp._udp"
+        ]
       }
     },
     "android": {

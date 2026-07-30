@@ -345,6 +345,29 @@ a test covers exactly that.
 The code comes from `matchStartTime`, so it survives a restart. A code held in
 memory would not.
 
+### The native side, and what it must not do
+
+`modules/match-link/` is a local Expo module wrapping Multipeer Connectivity.
+Multipeer picks its own path — Bluetooth, peer-to-peer Wi-Fi, or the local
+network — so no router is needed, which matters on a court that rarely has
+usable Wi-Fi.
+
+The Swift is deliberately thin: find, connect, move opaque strings. It does not
+know what a match is. Keep it that way — the watch runs on WatchConnectivity,
+an entirely different framework, and everything above the transport has to be
+reusable as it stands.
+
+Two things that will break it if forgotten:
+
+- **`requireNativeModule` throws in Expo Go**, where only Expo's own native code
+  exists. Importing it eagerly takes the whole app down on launch. It is asked
+  for once through `getMatchLinkModule()`, which catches and returns null, so a
+  build without it simply does not offer the feature.
+- **iOS 14 and later block Multipeer discovery outright** without
+  `NSLocalNetworkUsageDescription` and `NSBonjourServices` in the plist. Both
+  are in `app.json`, and the Bonjour entries must match the `serviceType` in the
+  Swift — `matchpoint-mp` — or nothing is ever found.
+
 ### A camera needs the link least
 
 It records continuously. All it needs is the scoreboard's clock once at the
