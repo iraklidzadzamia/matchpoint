@@ -318,18 +318,30 @@ not check those. Do not chase them.
 Verified on the build of 29 July 2026: encryption `false`, device family `[1]`,
 marketing icon opaque.
 
-## Americano: settings, not decisions baked in
+## The app suggests the next pairing. It never owns the schedule.
 
-Points per round, number of courts, number of rounds, and whether pairs come
-from a schedule or from the current standings are all **settings**. Do not pick
-values and bury them in code — different groups play differently, and the user
-asked specifically not to hardcode what does not need hardcoding.
+There is no Americano *mode* to enter and be stuck inside. The user was explicit
+about why: after a good match a pair often wants to stay together and play
+again, right then, and an app that has committed to a rotation table would have
+to refuse. Refusing is worse than any tidiness gained.
 
-The actual work is the schedule. With N players present and four to a court,
-something has to decide who partners whom in each round so that everybody plays
-a similar number of matches and with different partners. Standard tables exist
-for eight; five, six, seven and nine have to be computed. That algorithm is the
-same whatever the settings say.
+So:
+
+- Forming the next match is always free. Any four of the people present.
+- The app **suggests** — who has played least, which pairs have already played
+  together — and one tap accepts it. Ignoring it costs nothing and is not an
+  error state.
+- The standings are computed from the matches that actually happened. They do
+  not care whether a schedule was followed.
+
+Americano and Mexicano therefore become **presets for the suggestion**, not
+modes: turn one on and the suggestion follows that rotation instead of simply
+offering whoever has sat out longest. Points per round, courts and rounds are
+settings, not values buried in code — groups play differently.
+
+This also makes the algorithm much smaller. "Generate a fair schedule for the
+whole evening" becomes "who would be a good four right now", which cannot paint
+anybody into a corner.
 
 ## Sessions are derived, never stored
 
