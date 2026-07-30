@@ -396,6 +396,40 @@ The effect that owns the session deliberately depends on the switch alone, not
 on the match state. Following the state would tear the session down and rebuild
 it on every point, which is precisely the opposite of what it is for.
 
+### Decisions already taken, so they are not re-argued
+
+**Only the host speaks.** Synchronising the announcement across both phones is
+possible — the clock message already gives a shared time base — and it would
+still sound wrong. The phones sit at opposite ends of a court, roughly twenty
+metres, and sound needs about 58ms to cross that. Two identical sounds more than
+30-50ms apart are heard as an echo, so anybody not standing exactly halfway gets
+a slapback no matter how perfectly the two are triggered. Physics, not
+scheduling. One device talks; which one should become a setting, so a mirror
+nearer the players can take over and the host fall silent.
+
+**The link knows only who owns the match.** Not what a device *does*. A phone
+mounted on the fence can show the score and film at the same time, so a single
+role out of three was the wrong shape — but the answer is not a fourth role. The
+link cares about one thing: exactly one host, everybody else a guest. Whether a
+device draws a scoreboard, records video, or both is the app's business and
+combines freely. A camera is a guest that happens to be recording.
+
+**The mirror is a real scoreboard, and inert.** It stands at the far end of the
+court and gets looked at exactly like the host, so it shows the same big score,
+sets and names. It must not score points, open settings or undo anything —
+achieved by not passing it handlers at all, rather than hiding controls.
+
+### Testing on real phones does not need the App Store
+
+Two real devices, and therefore Bluetooth, are blocked on the **Apple membership**
+only. Once it lands, either TestFlight with yourself as an internal tester — no
+review — or an EAS internal-distribution link with the phones registered. Nothing
+here waits on a public release.
+
+A second simulator, "MatchPoint Second", exists for the two-device tests.
+Multipeer works between simulators over the host network; Bluetooth does not
+exist there at all.
+
 ### Sending before the connection exists
 
 Inviting a peer only *starts* a handshake. Anything sent between the invitation
