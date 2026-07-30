@@ -392,6 +392,30 @@ Records saved before the log existed have no `pointLog` at all. Everything that
 reads it goes through `record.pointLog ?? []` and the detail screen hides its
 statistics rather than showing a confident zero.
 
+### The watch is the remote, not a second screen
+
+One player is chosen as the leader and wears the watch, which is the pult for
+the whole match:
+
+| Gesture | Means |
+|---|---|
+| one tap | point for the leader's own side |
+| two taps | point for the opponents |
+| long press | undo |
+
+Its screen only confirms what was registered — do not design it as a mirror of
+the scoreboard.
+
+Telling one tap from two means **waiting ~250-300ms after the first tap** before
+anything can happen, so the score and the spoken announcement both land a beat
+late on every point. That is inherent to the scheme, not a defect: do not
+"fix" it by dropping the double tap. It also interacts with `audioQueue` — the
+tick fires on the resolved gesture, not the first touch.
+
+Expect accidental taps: a watch on a moving wrist during a rally will register
+touches nobody meant. Undo has to be trivially reachable, which is why it is
+the long press rather than a menu.
+
 ### Before building it
 
 - **It is unusable without the watch.** A phone on a tripod filming the court
