@@ -30,6 +30,11 @@ export const en = {
     history: 'Match History',
     lastMatch: 'Last match',
     joinMatch: 'Join a match',
+    mirroring: 'Mirroring',
+    stopMirroring: 'Stop',
+    mirrorReconnecting: 'Reconnecting',
+    mirrorLost: 'Lost the scoreboard',
+    mirrorLostHint: 'This is the last score that reached this phone. It may be out of date.',
     secondScreen: 'Second screen',
     matchCode: 'Match code',
     secondScreenIdle:

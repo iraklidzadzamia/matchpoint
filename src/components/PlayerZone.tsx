@@ -17,7 +17,12 @@ interface PlayerZoneProps {
   isServing: boolean;
   /** Which half of the screen this zone occupies, so the ball can sit on the outer edge. */
   align: 'left' | 'right';
-  onTap: (side: PlayerSide) => void;
+  /**
+   * Absent on a mirror. Not a disabled button — there is no button: a second
+   * screen at the far end of the court must not be able to score anything, and
+   * the surest way is for the touchable never to exist.
+   */
+  onTap?: (side: PlayerSide) => void;
   showTapHint?: boolean;
 }
 
@@ -46,7 +51,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
       }),
     ]).start();
 
-    onTap(side);
+    onTap?.(side);
   };
 
   const flashBg = flashAnim.interpolate({
@@ -57,12 +62,15 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
     ],
   });
 
+  // With no handler there is no touchable at all, so a mirror cannot be tapped
+  // into scoring even by accident.
+  const Wrapper = onTap ? TouchableOpacity : View;
+  const wrapperProps = onTap
+    ? { onPress: handlePress, activeOpacity: 0.9 }
+    : {};
+
   return (
-    <TouchableOpacity
-      style={styles.zoneContainer}
-      onPress={handlePress}
-      activeOpacity={0.9}
-    >
+    <Wrapper style={styles.zoneContainer} {...wrapperProps}>
       <Animated.View style={[styles.flashOverlay, { backgroundColor: flashBg }]} />
 
       {/* The ball rides the outer top corner of the number, so it reads in the
@@ -84,7 +92,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
           <Text style={styles.hintText}>{t('ui.tapToScore')}</Text>
         </View>
       )}
-    </TouchableOpacity>
+    </Wrapper>
   );
 };
 

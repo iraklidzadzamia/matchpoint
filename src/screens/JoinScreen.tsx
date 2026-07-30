@@ -1,18 +1,20 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MatchState } from '../engine/types';
-import { getDisplayScore, getSideNames } from '../engine/scoring';
 import { MatchLink } from '../link/matchLink';
 import { MultipeerTransport } from '../link/multipeerTransport';
-import { PeerInfo } from '../link/protocol';
+import { ConnectionState, PeerInfo } from '../link/protocol';
+import { MirrorScreen } from './MirrorScreen';
 import { SwipeBackView } from '../components/SwipeBackView';
 import { usePortraitOrientation } from '../hooks/useOrientation';
 import { theme } from '../styles/theme';
 import { t } from '../i18n';
 
 interface JoinScreenProps {
+  /** The user's own preference, carried through to the mirror. */
+  maxBrightness: boolean;
   onBack: () => void;
 }
 
@@ -24,36 +26,59 @@ interface JoinScreenProps {
  * neighbouring courts, both matches can genuinely be called the same thing, so
  * the code is what makes the choice certain.
  */
-export const JoinScreen: React.FC<JoinScreenProps> = ({ onBack }) => {
+export const JoinScreen: React.FC<JoinScreenProps> = ({ maxBrightness, onBack }) => {
   usePortraitOrientation();
 
   const [peers, setPeers] = useState<PeerInfo[]>([]);
   const [joined, setJoined] = useState<MatchState | null>(null);
   const [joining, setJoining] = useState<string | null>(null);
+  const [connection, setConnection] = useState<ConnectionState>('disconnected');
 
   const link = useRef<MatchLink | null>(null);
 
   useEffect(() => {
     if (!MultipeerTransport.available) return;
 
-    const created = new MatchLink(new MultipeerTransport(), 'guest');
+    const transport = new MultipeerTransport();
+    const created = new MatchLink(transport, 'guest');
     created.onPeers = setPeers;
     created.onState = setJoined;
+    // Watched here rather than through the link, because what the mirror needs
+    // to know is whether the scoreboard is still there — a transport question.
+    const stopWatching = transport.onConnection?.(setConnection);
     created.browse();
     link.current = created;
 
     return () => {
+      stopWatching?.();
       void created.leave();
       link.current = null;
     };
   }, []);
 
-  const score = useMemo(() => (joined ? getDisplayScore(joined) : null), [joined]);
+  // An invitation that is declined or never answered leaves the connection back
+  // where it started; without this the spinner on that row would turn forever.
+  useEffect(() => {
+    if (connection === 'disconnected' || connection === 'error') setJoining(null);
+  }, [connection]);
 
   const join = async (peer: PeerInfo) => {
     setJoining(peer.id);
     await link.current?.join(peer.id);
   };
+
+  // Once joined this is a scoreboard in its own right, not a page inside the
+  // joining flow — so it replaces the screen rather than rendering within it.
+  if (joined) {
+    return (
+      <MirrorScreen
+        state={joined}
+        connection={connection}
+        maxBrightness={maxBrightness}
+        onLeave={onBack}
+      />
+    );
+  }
 
   return (
     <SwipeBackView onBack={onBack}>
@@ -66,51 +91,41 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({ onBack }) => {
           <View style={styles.headerBtn} />
         </View>
 
-        {joined && score ? (
-          <View style={styles.live}>
-            <Text style={styles.liveName}>{getSideNames(joined.config, 'side1')}</Text>
-            <Text style={styles.liveScore}>
-              {score.side1Score} – {score.side2Score}
-            </Text>
-            <Text style={styles.liveName}>{getSideNames(joined.config, 'side2')}</Text>
-          </View>
-        ) : (
-          <View style={styles.content}>
-            {peers.length === 0 ? (
-              <View style={styles.searching}>
-                <ActivityIndicator color={theme.colors.text.muted} />
-                <Text style={styles.searchingText}>{t('ui.lookingForMatches')}</Text>
-                <Text style={styles.hint}>{t('ui.joinHint')}</Text>
-              </View>
-            ) : (
-              peers.map((peer) => (
-                <TouchableOpacity
-                  key={peer.id}
-                  style={styles.peer}
-                  onPress={() => join(peer)}
-                  activeOpacity={0.8}
-                  disabled={joining !== null}
-                >
-                  <View style={styles.peerText}>
-                    <Text style={styles.peerName} numberOfLines={1}>
-                      {peer.name}
-                    </Text>
-                    <Text style={styles.peerCode}>{peer.code}</Text>
-                  </View>
-                  {joining === peer.id ? (
-                    <ActivityIndicator color={theme.colors.accent.primary} />
-                  ) : (
-                    <Ionicons
-                      name="chevron-forward"
-                      size={18}
-                      color={theme.colors.text.muted}
-                    />
-                  )}
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-        )}
+        <View style={styles.content}>
+          {peers.length === 0 ? (
+            <View style={styles.searching}>
+              <ActivityIndicator color={theme.colors.text.muted} />
+              <Text style={styles.searchingText}>{t('ui.lookingForMatches')}</Text>
+              <Text style={styles.hint}>{t('ui.joinHint')}</Text>
+            </View>
+          ) : (
+            peers.map((peer) => (
+              <TouchableOpacity
+                key={peer.id}
+                style={styles.peer}
+                onPress={() => join(peer)}
+                activeOpacity={0.8}
+                disabled={joining !== null}
+              >
+                <View style={styles.peerText}>
+                  <Text style={styles.peerName} numberOfLines={1}>
+                    {peer.name}
+                  </Text>
+                  <Text style={styles.peerCode}>{peer.code}</Text>
+                </View>
+                {joining === peer.id ? (
+                  <ActivityIndicator color={theme.colors.accent.primary} />
+                ) : (
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color={theme.colors.text.muted}
+                  />
+                )}
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
       </SafeAreaView>
     </SwipeBackView>
   );
@@ -184,24 +199,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontVariant: ['tabular-nums'],
     letterSpacing: 2,
-  },
-  live: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-    padding: theme.spacing.lg,
-  },
-  liveName: {
-    color: theme.colors.text.secondary,
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  liveScore: {
-    color: theme.colors.text.primary,
-    fontSize: 72,
-    fontWeight: '900',
-    fontVariant: ['tabular-nums'],
   },
 });

@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import * as Brightness from 'expo-brightness';
 import { MatchConfig, PlayerSide, AppSettings } from './src/engine/types';
 import {
   defaultMatchConfig,
@@ -12,6 +11,7 @@ import {
   loadAppSettings,
 } from './src/storage/matchStorage';
 import { useMatch } from './src/hooks/useMatch';
+import { useMaxBrightness } from './src/hooks/useMaxBrightness';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { MatchSetupScreen } from './src/screens/MatchSetupScreen';
 import { ScoreScreen } from './src/screens/ScoreScreen';
@@ -71,25 +71,9 @@ export default function App() {
     if (currentScreen !== 'score') audioQueue.stopAll();
   }, [currentScreen]);
 
-  // restoreSystemBrightnessAsync is Android-only, so remember the user's own
-  // level and put it back ourselves when leaving the score screen.
-  const priorBrightnessRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    async function applyBrightness() {
-      if (currentScreen === 'score' && appSettings.maxBrightness) {
-        if (priorBrightnessRef.current === null) {
-          priorBrightnessRef.current = await Brightness.getBrightnessAsync();
-        }
-        await Brightness.setBrightnessAsync(1);
-      } else if (priorBrightnessRef.current !== null) {
-        const prior = priorBrightnessRef.current;
-        priorBrightnessRef.current = null;
-        await Brightness.setBrightnessAsync(prior);
-      }
-    }
-    applyBrightness().catch(() => {});
-  }, [currentScreen, appSettings.maxBrightness]);
+  // A phone mirroring somebody else's match turns its own brightness up, so this
+  // covers the score screen only; both go through the same hook.
+  useMaxBrightness(currentScreen === 'score' && appSettings.maxBrightness);
 
   const handleStartSetup = () => {
     setCurrentScreen('setup');
@@ -163,7 +147,10 @@ export default function App() {
 
       {currentScreen === 'join' && (
         <View style={StyleSheet.absoluteFill}>
-          <JoinScreen onBack={() => setCurrentScreen('home')} />
+          <JoinScreen
+            maxBrightness={appSettings.maxBrightness}
+            onBack={() => setCurrentScreen('home')}
+          />
         </View>
       )}
 

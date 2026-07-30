@@ -7,6 +7,11 @@ import { t } from '../i18n';
 
 interface SetScoreBarProps {
   state: MatchState;
+  /**
+   * Absent on a mirror, which must not be able to open anything. With no handler
+   * the bar is a plain view, so it does not dim under a finger and promise
+   * something that will not happen.
+   */
   onPressPlayers?: () => void;
 }
 
@@ -28,12 +33,13 @@ export const SetScoreBar: React.FC<SetScoreBarProps> = ({ state, onPressPlayers 
   const allSetScores: [number, number][] = [...state.completedSets, [...state.games] as [number, number]]
     .map(orderScore);
 
+  const Wrapper = onPressPlayers ? TouchableOpacity : View;
+  const wrapperProps = onPressPlayers
+    ? { onPress: onPressPlayers, activeOpacity: 0.8 }
+    : {};
+
   return (
-    <TouchableOpacity
-      style={styles.container}
-      onPress={onPressPlayers}
-      activeOpacity={0.8}
-    >
+    <Wrapper style={styles.container} {...wrapperProps}>
       {/* Left Side Info */}
       <View style={styles.sideGroup}>
         <Text
@@ -86,7 +92,7 @@ export const SetScoreBar: React.FC<SetScoreBarProps> = ({ state, onPressPlayers 
           {rightName}
         </Text>
       </View>
-    </TouchableOpacity>
+    </Wrapper>
   );
 };
 
