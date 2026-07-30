@@ -318,6 +318,39 @@ not check those. Do not chase them.
 Verified on the build of 29 July 2026: encryption `false`, device family `[1]`,
 marketing icon opaque.
 
+## Several devices, one match
+
+`src/link/` holds the layer that keeps devices looking at the same match, with
+**no native code in it at all**. Three files:
+
+- `protocol.ts` — the four messages and the `Transport` interface. Knows nothing
+  about how anything travels, which is the point: phone-to-phone will be
+  Multipeer Connectivity, phone-to-watch is WatchConnectivity, and neither
+  belongs above this line.
+- `matchLink.ts` — one device owns the truth. The scoreboard runs the engine;
+  everybody else sends "score this" and is sent the resulting state. That works
+  only because the engine is a pure function, so there is nothing to reconcile.
+- `loopbackTransport.ts` — an in-memory network, so all of the above is tested
+  in Jest today. It has no latency and never drops, so it proves the wiring and
+  not the radio.
+
+### Choosing which phone, and why a code
+
+Several groups can be on neighbouring courts running this app, and two of their
+matches can genuinely be called the same thing. So a scoreboard advertises both
+a **name** and a **four-digit code**, and the code is shown on its own screen:
+you read it off the phone you mean. Never connect to whatever answered first —
+a test covers exactly that.
+
+The code comes from `matchStartTime`, so it survives a restart. A code held in
+memory would not.
+
+### A camera needs the link least
+
+It records continuously. All it needs is the scoreboard's clock once at the
+start and the point times at the end, so a connection dropping mid-match costs
+nothing. Do not design it to depend on a live link.
+
 ## Points mode: an Americano round
 
 `scoringMode: 'points'` scores a round the way Americano is actually played —

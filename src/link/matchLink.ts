@@ -1,0 +1,128 @@
+import { MatchState, PlayerSide } from '../engine/types';
+import { addPoint } from '../engine/scoring';
+import { Message, PeerInfo, Role, Transport, matchCode } from './protocol';
+
+/**
+ * Keeps several devices looking at the same match.
+ *
+ * **One device holds the truth.** The scoreboard owns the state and is the only
+ * thing that runs the engine; everybody else asks it to score a point and is
+ * sent the result. That works because the engine is a pure function — given a
+ * state and a point, it returns the next state — so there is nothing to keep in
+ * sync beyond passing the state along.
+ *
+ * A camera needs none of this while playing: it records continuously and only
+ * needs the scoreboard's clock at the start and the point times at the end. A
+ * connection dropping mid-match therefore loses nothing.
+ */
+export class MatchLink {
+  private stopListening: (() => void) | null = null;
+  private stopBrowsing: (() => void) | null = null;
+  private state: MatchState | null = null;
+  private clockOffsetMs = 0;
+
+  /** Called whenever the match changes, on every device. */
+  onState: ((state: MatchState) => void) | null = null;
+  /** Called with what is nearby, while browsing. */
+  onPeers: ((peers: PeerInfo[]) => void) | null = null;
+
+  constructor(
+    private transport: Transport,
+    public readonly role: Role
+  ) {
+    this.stopListening = transport.onMessage((message) => this.receive(message));
+  }
+
+  /** How far this device's clock is behind the scoreboard's, in milliseconds. */
+  get clockOffset(): number {
+    return this.clockOffsetMs;
+  }
+
+  get current(): MatchState | null {
+    return this.state;
+  }
+
+  /**
+   * Start owning a match and become findable. The name is what somebody choosing
+   * a device sees; the code is what makes that choice unambiguous.
+   */
+  async host(state: MatchState, name: string): Promise<void> {
+    this.state = state;
+    await this.transport.advertise({ name, code: matchCode(state.matchStartTime) });
+  }
+
+  /** Look for scoreboards. Stops when `join` succeeds or `leave` is called. */
+  browse(): void {
+    this.stopBrowsing?.();
+    this.stopBrowsing = this.transport.browse((peers) => this.onPeers?.(peers));
+  }
+
+  /** Connect to the one that was chosen — never to whatever answered first. */
+  async join(peerId: string): Promise<void> {
+    await this.transport.connect(peerId);
+    this.stopBrowsing?.();
+    this.stopBrowsing = null;
+    await this.transport.send({ kind: 'clock', sentAt: Date.now() });
+  }
+
+  /**
+   * Scores a point. On the scoreboard this runs the engine and sends the result;
+   * anywhere else it asks the scoreboard to do it, and the answer arrives as a
+   * state message.
+   */
+  async score(winner: PlayerSide, at: number = Date.now()): Promise<void> {
+    if (this.role !== 'scoreboard') {
+      await this.transport.send({ kind: 'point', winner });
+      return;
+    }
+    if (!this.state) return;
+    this.state = addPoint(this.state, winner, at);
+    this.onState?.(this.state);
+    await this.publish();
+  }
+
+  /** Replaces the state after an undo, or any other change made locally. */
+  async publish(state?: MatchState): Promise<void> {
+    if (state) this.state = state;
+    if (this.role !== 'scoreboard' || !this.state) return;
+    await this.transport.send({ kind: 'state', state: this.state, sentAt: Date.now() });
+  }
+
+  async leave(): Promise<void> {
+    this.stopBrowsing?.();
+    this.stopBrowsing = null;
+    this.stopListening?.();
+    this.stopListening = null;
+    await this.transport.stopAdvertising();
+    await this.transport.disconnect();
+  }
+
+  private receive(message: Message): void {
+    switch (message.kind) {
+      case 'state':
+        // Only a scoreboard produces these, so anything arriving here is newer
+        // than what this device has.
+        this.state = message.state;
+        this.onState?.(message.state);
+        return;
+
+      case 'point':
+        // A request from another device. Ignored unless this one owns the match,
+        // which stops two scoreboards from scoring each other's matches.
+        if (this.role === 'scoreboard') void this.score(message.winner);
+        return;
+
+      case 'undo':
+        return;
+
+      case 'clock':
+        if (this.role === 'scoreboard') {
+          void this.transport.send({ kind: 'clock', sentAt: Date.now() });
+          void this.publish();
+        } else {
+          this.clockOffsetMs = message.sentAt - Date.now();
+        }
+        return;
+    }
+  }
+}
