@@ -10,6 +10,8 @@ function record(startedAt: number, minutes = 45, over: Partial<MatchRecord> = {}
     id: String(startedAt),
     sport: 'padel',
     format: 'doubles',
+    scoringMode: 'sets',
+    pointsToWin: 21,
     side1Name: 'Irakli & Nika',
     side2Name: 'Rafael & Juan',
     setScores: [[6, 4], [6, 3]],

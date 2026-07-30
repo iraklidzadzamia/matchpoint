@@ -29,6 +29,8 @@ function randomConfig(rng: () => number): MatchConfig {
   return {
     sport: pick(SPORTS),
     format: pick(FORMATS),
+    scoringMode: 'sets' as const,
+    pointsToWin: 21,
     totalSets: pick(TOTAL_SETS),
     gamesPerSet: 6,
     tieBreakEnabled: rng() < 0.85,

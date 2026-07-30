@@ -28,8 +28,13 @@ export function getScoreAnnouncement(state: MatchState): string | null {
   const winnerSide: PlayerSide = last.winner;
   const winnerName = getSideNames(state.config, winnerSide);
 
+  const isPoints = state.config.scoringMode === 'points';
+
   if (last.type === 'match') {
-    return t('score.matchWon', { name: winnerName });
+    // "Game, set and match" is nonsense in a round with neither.
+    return isPoints
+      ? t('score.roundWon', { name: winnerName })
+      : t('score.matchWon', { name: winnerName });
   }
 
   if (last.type === 'set') {
@@ -44,6 +49,15 @@ export function getScoreAnnouncement(state: MatchState): string | null {
   }
 
   if (last.type === 'point') {
+    // A points round has plain counts and no ladder — the server's score first,
+    // same as tennis, because that is the habit these numbers are heard in.
+    if (isPoints) {
+      const [a, b] = state.points;
+      if (a === b) return `${a} ${t('score.all')}`;
+      const serverFirst = state.serving === 'side1';
+      return `${serverFirst ? a : b}, ${serverFirst ? b : a}`;
+    }
+
     if (last.isMatchPoint) {
       return `${t('score.matchPoint')}, ${winnerName}`;
     }

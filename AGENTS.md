@@ -318,6 +318,31 @@ not check those. Do not chase them.
 Verified on the build of 29 July 2026: encryption `false`, device family `[1]`,
 marketing icon opaque.
 
+## Points mode: an Americano round
+
+`scoringMode: 'points'` scores a round the way Americano is actually played —
+first to a fixed number of points, no games, no sets, no deuce. It is a **mode,
+not a setting**, because none of the 0/15/30/40 machinery applies: `addPoint`
+branches to `addRawPoint` before any of it runs.
+
+Things that fall out of that and are easy to get wrong:
+
+- `state.points` holds real points in this mode, not ladder positions. Anything
+  reading `points` has to know which mode it is in — `getDisplayScore` checks.
+- The final score is written into `completedSets` as a single entry, so history,
+  the match detail screen and the players table all read a round without
+  knowing it is one. `setsWon` becomes 1-0 for the same reason.
+- The serve passes every `POINTS_PER_SERVE` points regardless of who won them.
+  Four is standard; it is a named constant so making it a setting is one line.
+- "Game, set and match" is nonsense here, so the announcement is `score.roundWon`.
+- The score bar has no games or sets to show and displays the target instead.
+- `scoringMode` is **absent** on matches saved before this existed. Missing
+  means `'sets'`, and a test covers a legacy config still scoring games.
+
+The mode is chosen on the New Match screen rather than in Settings: one evening
+can hold full sets and an Americano round, so it belongs where the match is
+built.
+
 ## An evening on its own
 
 Tapping a session header in history opens that outing: the same table as the

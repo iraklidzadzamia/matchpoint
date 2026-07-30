@@ -7,6 +7,8 @@ function record(over: Partial<MatchRecord> = {}): MatchRecord {
     id: String(Math.random()),
     sport: 'padel',
     format: 'doubles',
+    scoringMode: 'sets',
+    pointsToWin: 21,
     side1Name: 'Irakli & Nika',
     side2Name: 'Rafael & Juan',
     side1Players: ['Irakli', 'Nika'],

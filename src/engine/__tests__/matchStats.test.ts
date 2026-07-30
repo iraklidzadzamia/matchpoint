@@ -5,6 +5,8 @@ import { MatchConfig, MatchRecord, PlayerSide } from '../types';
 const config: MatchConfig = {
   sport: 'tennis',
   format: 'singles',
+  scoringMode: 'sets',
+  pointsToWin: 21,
   totalSets: 3,
   gamesPerSet: 6,
   tieBreakEnabled: true,

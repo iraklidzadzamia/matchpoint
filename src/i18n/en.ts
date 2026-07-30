@@ -17,6 +17,8 @@ export const en = {
     gameWon: 'Game, {name}!',
     setWon: 'Game and {ordinal} set, {name}!',
     matchWon: 'Game, set and match, {name}!',
+    // A points round has no games and no sets to call.
+    roundWon: 'Round to {name}!',
   },
   ui: {
     appTitle: 'MatchPoint',
@@ -51,6 +53,10 @@ export const en = {
     singles: 'Singles',
     doubles: 'Doubles',
     testVoice: 'Test',
+    scoreBySets: 'Sets',
+    scoreByPoints: 'Points',
+    pointsToWin: 'First to how many points?',
+    toPoints: 'to {count}',
     setsInMatch: 'Sets in Match',
     gamesPerSet: 'Games to Win a Set',
     gamesPerSetHint:

@@ -6,6 +6,8 @@ describe('MatchPoint Scoring Engine', () => {
   const defaultConfig: MatchConfig = {
     sport: 'tennis',
     format: 'singles',
+    scoringMode: 'sets',
+    pointsToWin: 21,
     totalSets: 3,
     gamesPerSet: 6,
     tieBreakEnabled: true,
@@ -549,6 +551,120 @@ describe('MatchPoint Scoring Engine', () => {
       for (let i = 0; i < 2; i++) match = winGame(match, 'side1');
       expect(match.matchStatus).toBe('finished');
       expect(match.completedSets).toEqual([[6, 0]]);
+    });
+  });
+
+  describe('points mode', () => {
+    const round: MatchConfig = {
+      ...defaultConfig,
+      sport: 'padel',
+      format: 'doubles',
+      scoringMode: 'points',
+      pointsToWin: 8,
+      side1: { player1: 'Irakli', player2: 'Nika' },
+      side2: { player1: 'Rafael', player2: 'Juan' },
+    };
+
+    test('the score is the point count, not the tennis ladder', () => {
+      let match = createMatch(round);
+      match = addPoint(match, 'side1', 1);
+      expect(getDisplayScore(match)).toEqual({ side1Score: '1', side2Score: '0' });
+
+      match = addPoint(match, 'side2', 2);
+      match = addPoint(match, 'side2', 3);
+      expect(getDisplayScore(match)).toEqual({ side1Score: '1', side2Score: '2' });
+    });
+
+    test('no games, no sets, no deuce', () => {
+      let match = createMatch(round);
+      for (let i = 0; i < 3; i++) match = addPoint(match, 'side1', i);
+      for (let i = 0; i < 3; i++) match = addPoint(match, 'side2', 10 + i);
+
+      // Three each would be 40:40 in a normal game. Here it is simply 3-3.
+      expect(match.isDeuce).toBe(false);
+      expect(match.games).toEqual([0, 0]);
+      expect(match.setsWon).toEqual([0, 0]);
+      expect(getDisplayScore(match)).toEqual({ side1Score: '3', side2Score: '3' });
+    });
+
+    test('reaching the target ends the match', () => {
+      let match = createMatch(round);
+      for (let i = 0; i < 7; i++) match = addPoint(match, 'side1', i);
+      expect(match.matchStatus).toBe('playing');
+
+      match = addPoint(match, 'side1', 7);
+      expect(match.matchStatus).toBe('finished');
+      expect(match.matchWinner).toBe('side1');
+      expect(match.matchEndTime).toBe(7);
+    });
+
+    test('the final score is kept where every screen already looks for it', () => {
+      let match = createMatch(round);
+      for (let i = 0; i < 5; i++) match = addPoint(match, 'side2', i);
+      for (let i = 0; i < 8; i++) match = addPoint(match, 'side1', 10 + i);
+
+      const record = toMatchRecord(match)!;
+      expect(record.setScores).toEqual([[8, 5]]);
+      expect(record.setsWon).toEqual([1, 0]);
+      expect(record.scoringMode).toBe('points');
+      expect(record.pointsToWin).toBe(8);
+    });
+
+    test('the serve passes every four points, whoever wins them', () => {
+      let match = createMatch(round);
+      expect(match.serving).toBe('side1');
+
+      // Side 2 takes the first three; the serve has not moved yet.
+      for (let i = 0; i < 3; i++) match = addPoint(match, 'side2', i);
+      expect(match.serving).toBe('side1');
+
+      match = addPoint(match, 'side1', 4);
+      expect(match.serving).toBe('side2');
+
+      for (let i = 0; i < 4; i++) match = addPoint(match, 'side1', 10 + i);
+      expect(match.serving).toBe('side1');
+    });
+
+    test('every point is logged with who served it', () => {
+      let match = createMatch(round);
+      for (let i = 0; i < 5; i++) match = addPoint(match, 'side1', i);
+
+      expect(match.pointLog.map((p) => p.served)).toEqual([
+        'side1',
+        'side1',
+        'side1',
+        'side1',
+        'side2',
+      ]);
+      expect(match.pointLog[4].type).toBe('point');
+    });
+
+    test('the point before the last is a match point', () => {
+      let match = createMatch(round);
+      for (let i = 0; i < 6; i++) match = addPoint(match, 'side1', i);
+      expect(match.lastEvent?.isMatchPoint).toBe(false);
+
+      match = addPoint(match, 'side1', 6);
+      expect(match.lastEvent?.isMatchPoint).toBe(true);
+    });
+
+    test('nothing is recorded after the round is over', () => {
+      let match = createMatch(round);
+      for (let i = 0; i < 8; i++) match = addPoint(match, 'side1', i);
+      const finished = match;
+
+      match = addPoint(match, 'side2', 99);
+      expect(match).toBe(finished);
+    });
+
+    test('a match saved before the mode existed still scores as sets', () => {
+      const legacy = { ...defaultConfig } as MatchConfig;
+      delete (legacy as Partial<MatchConfig>).scoringMode;
+
+      let match = createMatch(legacy);
+      for (let i = 0; i < 4; i++) match = addPoint(match, 'side1', i);
+      expect(match.games).toEqual([1, 0]);
+      expect(getDisplayScore(match)).toEqual({ side1Score: '0', side2Score: '0' });
     });
   });
 });

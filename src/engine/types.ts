@@ -13,9 +13,24 @@ export interface PlayerInfo {
 // instead of a best-of-three.
 export type GamesPerSet = 4 | 6 | 8;
 
+/**
+ * How a match is won.
+ *
+ * `sets` is tennis and padel as the rulebooks have them: points make games,
+ * games make sets.
+ *
+ * `points` is how an Americano round is played — first to a fixed number of
+ * points, with no games, no sets and no deuce. Everything about 0/15/30/40 stops
+ * applying, which is why this is a mode rather than another setting.
+ */
+export type ScoringMode = 'sets' | 'points';
+
 export interface MatchConfig {
   sport: Sport;
   format: MatchFormat;
+  scoringMode: ScoringMode;
+  /** Points that win a round in `points` mode. Ignored in `sets` mode. */
+  pointsToWin: number;
   totalSets: 1 | 3 | 5;
   gamesPerSet: GamesPerSet;
   tieBreakEnabled: boolean;
@@ -37,6 +52,15 @@ export interface MatchRecord {
   id: string;
   sport: Sport;
   format: MatchFormat;
+  /**
+   * How it was scored. Absent on everything saved before the points mode
+   * existed, which was all set-scored — so read it as `'sets'` when missing.
+   * Kept because a final score of 21-18 needs labelling as a round rather than
+   * being mistaken for a very long set.
+   */
+  scoringMode?: ScoringMode;
+  /** The target in a points round, for showing what was played to. */
+  pointsToWin?: number;
   side1Name: string;
   side2Name: string;
   setScores: [number, number][];

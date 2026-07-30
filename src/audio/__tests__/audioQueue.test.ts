@@ -31,6 +31,8 @@ const sfx = soundEffects as jest.Mocked<typeof soundEffects>;
 const config: MatchConfig = {
   sport: 'tennis',
   format: 'singles',
+  scoringMode: 'sets',
+  pointsToWin: 21,
   totalSets: 1,
   gamesPerSet: 6,
   tieBreakEnabled: true,

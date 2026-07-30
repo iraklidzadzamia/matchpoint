@@ -19,6 +19,8 @@ import { MatchConfig, AppSettings } from '../../engine/types';
 const baseConfig: MatchConfig = {
   sport: 'tennis',
   format: 'singles',
+  scoringMode: 'sets',
+  pointsToWin: 21,
   totalSets: 3,
   gamesPerSet: 6,
   tieBreakEnabled: true,

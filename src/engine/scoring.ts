@@ -7,6 +7,18 @@ function gamesToWin(config: MatchConfig): number {
   return config.gamesPerSet ?? 6;
 }
 
+/** Matches saved before the points mode existed are all set-scored. */
+function isPointsMode(config: MatchConfig): boolean {
+  return config.scoringMode === 'points';
+}
+
+/**
+ * Points between serve changes in an Americano round. Four is what groups
+ * normally play; it is a named constant rather than a literal so that turning it
+ * into a setting later is one line.
+ */
+const POINTS_PER_SERVE = 4;
+
 export function createMatch(config: MatchConfig): MatchState {
   return {
     config,
@@ -77,6 +89,8 @@ export function toMatchRecord(state: MatchState): MatchRecord | null {
     id: `${state.matchStartTime}`,
     sport: state.config.sport,
     format: state.config.format,
+    scoringMode: state.config.scoringMode,
+    pointsToWin: state.config.pointsToWin,
     side1Name: getSideNames(state.config, 'side1'),
     side2Name: getSideNames(state.config, 'side2'),
     setScores: state.completedSets.map((s) => [...s] as [number, number]),
@@ -105,6 +119,13 @@ export function setServingPlayer(state: MatchState, side: PlayerSide, playerInde
 }
 
 export function getDisplayScore(state: MatchState): { side1Score: string; side2Score: string } {
+  if (isPointsMode(state.config)) {
+    return {
+      side1Score: state.points[0].toString(),
+      side2Score: state.points[1].toString(),
+    };
+  }
+
   if (state.isTieBreak || state.isMatchTieBreak) {
     return {
       side1Score: state.tieBreakPoints[0].toString(),
@@ -140,6 +161,8 @@ export function getDisplayScore(state: MatchState): { side1Score: string; side2S
 export function addPoint(state: MatchState, winner: PlayerSide, at: number = Date.now()): MatchState {
   if (state.matchStatus === 'finished') return state;
 
+  if (isPointsMode(state.config)) return addRawPoint(state, winner, at);
+
   // Read the server off the state going *in*: applying the point can end a game
   // and hand the serve over, so `next.serving` is whoever serves the point after
   // this one.
@@ -157,6 +180,49 @@ export function addPoint(state: MatchState, winner: PlayerSide, at: number = Dat
   // The match ends when its last point was played, not when the engine happened
   // to run — so the duration comes from the same clock as the point log.
   if (next.matchStatus === 'finished') next.matchEndTime = at;
+  return next;
+}
+
+/**
+ * A point in `points` mode. The running score lives in `state.points`, which in
+ * this mode counts actual points rather than the 0/15/30/40 ladder, and the
+ * match ends the moment somebody reaches the target.
+ */
+function addRawPoint(state: MatchState, winner: PlayerSide, at: number): MatchState {
+  const next: MatchState = {
+    ...state,
+    points: [...state.points] as [number, number],
+    pointLog: [...state.pointLog],
+  };
+  const winnerIdx = winner === 'side1' ? 0 : 1;
+
+  const served = state.serving;
+  const servedByPlayer = state.serverPlayerIndex[served === 'side1' ? 0 : 1] as 0 | 1;
+
+  next.points[winnerIdx] += 1;
+  const target = state.config.pointsToWin;
+  const isMatchPoint = next.points[winnerIdx] + 1 >= target;
+
+  if (next.points[winnerIdx] >= target) {
+    next.matchStatus = 'finished';
+    next.matchWinner = winner;
+    next.matchEndTime = at;
+    // One "set" holding the final score, so history and the match detail screen
+    // read a points round the same way they read everything else.
+    next.completedSets = [[...next.points] as [number, number]];
+    next.setsWon = winner === 'side1' ? [1, 0] : [0, 1];
+    next.lastEvent = { type: 'match', winner };
+  } else {
+    next.lastEvent = { type: 'point', winner, isMatchPoint };
+  }
+
+  // Serve passes every few points regardless of who won them.
+  const played = next.points[0] + next.points[1];
+  if (played % POINTS_PER_SERVE === 0) {
+    next.serving = state.serving === 'side1' ? 'side2' : 'side1';
+  }
+
+  next.pointLog.push({ at, winner, type: next.lastEvent.type, served, servedByPlayer });
   return next;
 }
 

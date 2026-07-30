@@ -9,7 +9,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Sport, MatchConfig, PlayerSide, MatchFormat, MatchRecord } from '../engine/types';
+import {
+  Sport,
+  MatchConfig,
+  PlayerSide,
+  MatchFormat,
+  MatchRecord,
+  ScoringMode,
+} from '../engine/types';
 import { groupIntoSessions, DEFAULT_SESSION_GAP_SEC } from '../engine/sessions';
 import { suggestNextMatch, sittingOut } from '../engine/nextMatch';
 import { NameInput } from '../components/NameInput';
@@ -49,6 +56,11 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
   // label kept for the history list.
   const [sport, setSport] = useState<Sport>(baseConfig.sport);
   const [isSingles, setIsSingles] = useState<boolean>(baseConfig.format === 'singles');
+
+  // Per match, not a setting: one evening can hold full sets and an Americano
+  // round, and the choice belongs where the match is being built.
+  const [scoringMode, setScoringMode] = useState<ScoringMode>(baseConfig.scoringMode ?? 'sets');
+  const [pointsToWin, setPointsToWin] = useState<number>(baseConfig.pointsToWin ?? 21);
 
   // Blank to start; filled in below from the last match if there was one. A
   // placeholder is clearer than a sample name you might start a real match with.
@@ -192,6 +204,8 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
       format,
       // Star point and golden point are padel rules; tennis plays advantages.
       goldenPointEnabled: sport === 'padel' ? baseConfig.goldenPointEnabled : false,
+      scoringMode,
+      pointsToWin,
       side1: buildSide('side1'),
       side2: buildSide('side2'),
       servingFirst,
@@ -254,6 +268,35 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
           value={isSingles ? 'singles' : 'doubles'}
           onChange={(v) => setIsSingles(v === 'singles')}
         />
+
+        <Segmented
+          options={[
+            { value: 'sets', label: t('ui.scoreBySets') },
+            { value: 'points', label: t('ui.scoreByPoints') },
+          ]}
+          value={scoringMode}
+          onChange={(v) => setScoringMode(v as ScoringMode)}
+        />
+
+        {scoringMode === 'points' && (
+          <View style={styles.targetRow}>
+            <Text style={styles.targetLabel}>{t('ui.pointsToWin')}</Text>
+            <View style={styles.chipRow}>
+              {[16, 21, 24, 32].map((n) => (
+                <TouchableOpacity
+                  key={n}
+                  style={[styles.chip, pointsToWin === n && styles.chipActive]}
+                  onPress={() => setPointsToWin(n)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.chipText, pointsToWin === n && styles.chipTextActive]}>
+                    {n}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* One row of names, not two. Tapping a name puts it on court; who turned
             up at all is edited behind a button, because it changes once an evening
@@ -419,6 +462,15 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.sm,
+  },
+  targetRow: {
+    gap: 10,
+    marginTop: theme.spacing.xs,
+  },
+  targetLabel: {
+    color: theme.colors.text.secondary,
+    fontSize: 15,
+    fontWeight: '600',
   },
   chipRow: {
     flexDirection: 'row',

@@ -11,6 +11,8 @@ import { MatchConfig, MatchRecord, PlayerSide } from '../../engine/types';
 const config: MatchConfig = {
   sport: 'padel',
   format: 'doubles',
+  scoringMode: 'sets',
+  pointsToWin: 21,
   totalSets: 3,
   gamesPerSet: 6,
   tieBreakEnabled: true,

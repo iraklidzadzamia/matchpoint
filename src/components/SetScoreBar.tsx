@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MatchState } from '../engine/types';
 import { getSideNames } from '../engine/scoring';
 import { theme } from '../styles/theme';
+import { t } from '../i18n';
 
 interface SetScoreBarProps {
   state: MatchState;
@@ -45,7 +46,15 @@ export const SetScoreBar: React.FC<SetScoreBarProps> = ({ state, onPressPlayers 
         </Text>
       </View>
 
-      {/* Set Score Matrix */}
+      {/* In a points round there are no games or sets to show; the useful thing
+          in the middle is what the round is being played to. */}
+      {state.config.scoringMode === 'points' ? (
+        <View style={styles.scoreMatrix}>
+          <Text style={styles.targetText}>
+            {t('ui.toPoints', { count: String(state.config.pointsToWin) })}
+          </Text>
+        </View>
+      ) : (
       <View style={styles.scoreMatrix}>
         {allSetScores.map((setScore, idx) => {
           const isCurrentSet = idx === allSetScores.length - 1;
@@ -64,6 +73,7 @@ export const SetScoreBar: React.FC<SetScoreBarProps> = ({ state, onPressPlayers 
           );
         })}
       </View>
+      )}
 
       {/* Right Side Info */}
       <View style={[styles.sideGroup, styles.sideGroupRight]}>
@@ -116,6 +126,11 @@ const styles = StyleSheet.create({
   },
   nameTextServing: {
     color: theme.colors.accent.ball,
+  },
+  targetText: {
+    color: theme.colors.text.muted,
+    fontSize: 13,
+    fontWeight: '700',
   },
   scoreMatrix: {
     flexDirection: 'row',

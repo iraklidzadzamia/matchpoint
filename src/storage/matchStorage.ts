@@ -22,6 +22,9 @@ export const defaultAppSettings: AppSettings = {
 export const defaultMatchConfig: MatchConfig = {
   sport: 'tennis',
   format: 'singles',
+  scoringMode: 'sets',
+  // Americano rounds are commonly played to 21 or 24; 21 is the shorter default.
+  pointsToWin: 21,
   totalSets: 3,
   gamesPerSet: 6,
   tieBreakEnabled: true,
