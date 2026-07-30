@@ -68,6 +68,17 @@ export interface PointRecord {
   at: number;
   winner: PlayerSide;
   type: MatchEvent['type'];
+  /**
+   * Who served this point, and which of that side's two players did. The engine
+   * knows both while the match runs but used to throw them away, which made the
+   * numbers that matter most in tennis and padel — points won on serve, games
+   * broken — impossible to work out afterwards.
+   *
+   * Optional: points logged before this existed genuinely do not know, and no
+   * amount of replaying can recover it.
+   */
+  served?: PlayerSide;
+  servedByPlayer?: 0 | 1;
 }
 
 export interface MatchEvent {

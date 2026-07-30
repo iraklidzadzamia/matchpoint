@@ -128,8 +128,20 @@ export function getDisplayScore(state: MatchState): { side1Score: string; side2S
 export function addPoint(state: MatchState, winner: PlayerSide, at: number = Date.now()): MatchState {
   if (state.matchStatus === 'finished') return state;
 
+  // Read the server off the state going *in*: applying the point can end a game
+  // and hand the serve over, so `next.serving` is whoever serves the point after
+  // this one.
+  const served = state.serving;
+  const servedByPlayer = state.serverPlayerIndex[served === 'side1' ? 0 : 1] as 0 | 1;
+
   const next = applyPoint(state, winner);
-  next.pointLog.push({ at, winner, type: next.lastEvent?.type ?? 'point' });
+  next.pointLog.push({
+    at,
+    winner,
+    type: next.lastEvent?.type ?? 'point',
+    served,
+    servedByPlayer,
+  });
   // The match ends when its last point was played, not when the engine happened
   // to run — so the duration comes from the same clock as the point log.
   if (next.matchStatus === 'finished') next.matchEndTime = at;

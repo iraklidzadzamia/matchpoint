@@ -114,4 +114,36 @@ describe('match statistics', () => {
     expect(stats.sets.map((s) => s.points)).toEqual([[24, 0], [0, 24], [24, 0]]);
     expect(stats.pointsWon).toEqual([48, 24]);
   });
+
+  describe('serve', () => {
+    test('splits points by who served them', () => {
+      // A short set won 4-0 to love. The serve alternates every game, so side 1
+      // served games one and three and side 2 served two and four — eight points
+      // each, and side 1 won every one of them.
+      let state = createMatch({ ...config, totalSets: 1, gamesPerSet: 4 });
+      let t = state.matchStartTime;
+      for (let i = 0; i < 16; i++) state = addPoint(state, 'side1', (t += 30_000));
+
+      expect(state.matchStatus).toBe('finished');
+      const stats = computeMatchStats(toMatchRecord(state)!);
+      expect(stats.serve).toEqual({ played: [8, 8], won: [8, 0] });
+    });
+
+    test('is null for a match logged before the server was recorded', () => {
+      const record: MatchRecord = {
+        id: 'old',
+        sport: 'padel',
+        format: 'doubles',
+        side1Name: 'A & B',
+        side2Name: 'C & D',
+        setScores: [[6, 0]],
+        setsWon: [1, 0],
+        winner: 'side1',
+        startedAt: 0,
+        durationSec: 600,
+        pointLog: [{ at: 0, winner: 'side1', type: 'point' }],
+      };
+      expect(computeMatchStats(record).serve).toBeNull();
+    });
+  });
 });

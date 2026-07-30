@@ -26,9 +26,22 @@ export interface SetBreakdown {
   games: GameBreakdown[];
 }
 
+/**
+ * How each side did on its own serve. Null for matches logged before the server
+ * was recorded — that is unrecoverable, so the screen hides the section rather
+ * than showing a confident zero.
+ */
+export interface ServeStats {
+  /** Points played with that side serving. */
+  played: [number, number];
+  /** Of those, the ones that side won. */
+  won: [number, number];
+}
+
 export interface MatchStats {
   totalPoints: number;
   pointsWon: [number, number];
+  serve: ServeStats | null;
   /** Null when a match ran without a point log — records saved by older builds. */
   averagePointSec: number | null;
   longestGame: GameBreakdown | null;
@@ -47,6 +60,21 @@ export function computeMatchStats(record: MatchRecord): MatchStats {
 
   const pointsWon: [number, number] = [0, 0];
   for (const p of log) pointsWon[sideIndex(p.winner)] += 1;
+
+  // A single point without a server means the whole match predates the field —
+  // a partially-served log is not a state the engine can produce.
+  const served = log.filter((p) => p.served);
+  let serve: ServeStats | null = null;
+  if (served.length > 0) {
+    const played: [number, number] = [0, 0];
+    const won: [number, number] = [0, 0];
+    for (const p of served) {
+      const s = sideIndex(p.served!);
+      played[s] += 1;
+      if (p.winner === p.served) won[s] += 1;
+    }
+    serve = { played, won };
+  }
 
   const sets: SetBreakdown[] = [];
   let games: GameBreakdown[] = [];
@@ -98,6 +126,7 @@ export function computeMatchStats(record: MatchRecord): MatchStats {
   return {
     totalPoints: log.length,
     pointsWon,
+    serve,
     averagePointSec,
     longestGame,
     sets,

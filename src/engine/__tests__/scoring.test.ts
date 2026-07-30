@@ -394,9 +394,9 @@ describe('MatchPoint Scoring Engine', () => {
       match = addPoint(match, 'side1', 4000);
 
       expect(match.pointLog).toEqual([
-        { at: 1000, winner: 'side1', type: 'point' },
-        { at: 2500, winner: 'side2', type: 'point' },
-        { at: 4000, winner: 'side1', type: 'point' },
+        { at: 1000, winner: 'side1', type: 'point', served: 'side1', servedByPlayer: 0 },
+        { at: 2500, winner: 'side2', type: 'point', served: 'side1', servedByPlayer: 0 },
+        { at: 4000, winner: 'side1', type: 'point', served: 'side1', servedByPlayer: 0 },
       ]);
     });
 
@@ -427,7 +427,50 @@ describe('MatchPoint Scoring Engine', () => {
 
       const record = toMatchRecord(match)!;
       expect(record.pointLog).toHaveLength(4);
-      expect(record.pointLog[3]).toEqual({ at: 300, winner: 'side1', type: 'match' });
+      expect(record.pointLog[3]).toEqual({
+        at: 300,
+        winner: 'side1',
+        type: 'match',
+        served: 'side1',
+        servedByPlayer: 0,
+      });
+    });
+
+    test('a point is credited to whoever served it, not to the next server', () => {
+      let match = createMatch(defaultConfig);
+      // Side 1 serves this whole game and takes it.
+      for (let i = 0; i < 4; i++) match = addPoint(match, 'side1', i);
+      // The serve has passed over, so this point belongs to side 2.
+      match = addPoint(match, 'side1', 5);
+
+      expect(match.pointLog.slice(0, 4).map((p) => p.served)).toEqual([
+        'side1',
+        'side1',
+        'side1',
+        'side1',
+      ]);
+      // The game-winning point was still served by side 1, not by the side that
+      // serves next — the handover happens after the point, not during it.
+      expect(match.pointLog[3].type).toBe('game');
+      expect(match.pointLog[4].served).toBe('side2');
+    });
+
+    test('in doubles the serving partner is recorded, and alternates each turn', () => {
+      const doubles: MatchConfig = {
+        ...defaultConfig,
+        format: 'doubles',
+        side1: { player1: 'A1', player2: 'A2' },
+        side2: { player1: 'B1', player2: 'B2' },
+      };
+      let match = createMatch(doubles);
+      for (let i = 0; i < 4; i++) match = addPoint(match, 'side1', i);   // A serves
+      for (let i = 0; i < 4; i++) match = addPoint(match, 'side2', 10 + i); // B serves
+      for (let i = 0; i < 4; i++) match = addPoint(match, 'side1', 20 + i); // A again
+
+      expect(match.pointLog[0]).toMatchObject({ served: 'side1', servedByPlayer: 0 });
+      expect(match.pointLog[4]).toMatchObject({ served: 'side2', servedByPlayer: 0 });
+      // Third game is side 1 serving again — the other partner takes it this time.
+      expect(match.pointLog[8]).toMatchObject({ served: 'side1', servedByPlayer: 1 });
     });
 
     test('the log is a copy, so editing the record cannot corrupt the match', () => {

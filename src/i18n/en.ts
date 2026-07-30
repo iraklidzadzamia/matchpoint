@@ -92,6 +92,8 @@ export const en = {
     duration: 'Duration',
     totalPoints: 'Points played',
     pointsWon: 'Points won',
+    onServe: 'Won on serve',
+    onServeHint: '% on own serve',
     // Deliberately not called a rally: the clock starts when the previous point
     // was tapped in, so it includes the walk back between points.
     avgPoint: 'Avg. per point',

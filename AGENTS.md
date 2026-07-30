@@ -318,6 +318,29 @@ not check those. Do not chase them.
 Verified on the build of 29 July 2026: encryption `false`, device family `[1]`,
 marketing icon opaque.
 
+## The point log records the server, and that cannot be backfilled
+
+Each `PointRecord` carries `served` and `servedByPlayer`. The engine always knew
+both — the score screen draws the ball beside whoever is serving — but it used
+to drop them, which made points won on serve and games broken impossible to work
+out after the fact.
+
+Two things to keep straight:
+
+- **Read the server off the state going in.** Applying a point can end a game and
+  hand the serve over, so `next.serving` is who serves the *following* point.
+  `addPoint` captures `state.serving` before calling `applyPoint`, and a test
+  pins the game-winning point to the side that actually served it.
+- **Both fields are optional and always will be.** Matches logged before they
+  existed cannot be repaired by replaying anything — the information was never
+  written down. `computeMatchStats` returns `serve: null` for those and the
+  detail screen hides the card instead of showing a confident zero.
+
+Breaks are deliberately **not** computed yet. Counting them means excluding
+tie-break games, and a record only stores set scores, so the tie-break has to be
+inferred (`max === min + 1`, which holds for 7-6, 5-4 and 9-8 alike). That
+deserves its own thought rather than being bolted on here.
+
 ## Totals across matches: `yourSide` is what makes them mean anything
 
 A `MatchRecord` used to save only that side 1 or side 2 won. Which side the

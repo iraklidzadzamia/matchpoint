@@ -30,6 +30,16 @@ function formatShort(sec: number): string {
   return `${Math.floor(sec / 60)}m ${sec % 60}s`;
 }
 
+/**
+ * "68", or "—" when that side never served — a very short match can do that.
+ * The per-cent sign lives in the card's hint: two of them plus a dash wraps the
+ * value onto a second line and the card stops matching the ones beside it.
+ */
+function servePercent(won: number, played: number): string {
+  if (played === 0) return '—';
+  return String(Math.round((won / played) * 100));
+}
+
 function formatDateTime(ms: number): string {
   return new Date(ms).toLocaleString(undefined, {
     day: 'numeric',
@@ -197,6 +207,17 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({
                     label={t('ui.longestGame')}
                     value={formatShort(stats.longestGame.durationSec)}
                     hint={`${stats.longestGame.points} ${t('ui.points')}`}
+                  />
+                ) : null}
+                {/* Missing for matches logged before the server was recorded. */}
+                {stats.serve ? (
+                  <Stat
+                    label={t('ui.onServe')}
+                    value={`${servePercent(stats.serve.won[0], stats.serve.played[0])}–${servePercent(
+                      stats.serve.won[1],
+                      stats.serve.played[1]
+                    )}`}
+                    hint={t('ui.onServeHint')}
                   />
                 ) : null}
               </>
