@@ -57,7 +57,16 @@ export interface Transport {
   send(message: Message): Promise<void>;
   /** Returns a function that stops listening. */
   onMessage(handler: (message: Message, fromPeerId: string) => void): () => void;
+
+  /**
+   * Whether anything is actually connected. Optional because a transport can be
+   * simple enough not to have the notion — the in-memory one used by tests is
+   * connected the moment it is asked to be.
+   */
+  onConnection?(handler: (state: ConnectionState) => void): () => void;
 }
+
+export type ConnectionState = 'connected' | 'connecting' | 'disconnected' | 'error';
 
 /**
  * A four-digit code for a match, derived from when it started so that the same

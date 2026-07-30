@@ -30,6 +30,16 @@ export const en = {
     history: 'Match History',
     lastMatch: 'Last match',
     joinMatch: 'Join a match',
+    secondScreen: 'Second screen',
+    matchCode: 'Match code',
+    secondScreenIdle:
+      'Show this match on another phone — at the far end of the court, or on the bench.',
+    secondScreenHint:
+      'On the other phone, open MatchPoint and tap Join a match, then pick the one showing this code.',
+    startSharing: 'Start sharing',
+    stopSharing: 'Stop sharing',
+    waitingForDevice: 'Waiting for a device',
+    deviceConnected: 'A device is connected',
     lookingForMatches: 'Looking for matches nearby',
     joinHint:
       'Open MatchPoint on the phone keeping score and start a match. It will show a four-digit code — pick the one here with the same code.',

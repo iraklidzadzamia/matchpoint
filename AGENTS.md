@@ -386,6 +386,28 @@ Two things that will break it if forgotten:
   are in `app.json`, and the Bonjour entries must match the `serviceType` in the
   Swift — `matchpoint-mp` — or nothing is ever found.
 
+### Hosting is off unless asked for
+
+Advertising costs radio and battery, and most matches are one phone on a bench.
+`useHosting` starts nothing until the switch is thrown, then publishes the state
+after every point so a second screen never has to ask for it.
+
+The effect that owns the session deliberately depends on the switch alone, not
+on the match state. Following the state would tear the session down and rebuild
+it on every point, which is precisely the opposite of what it is for.
+
+### What has and has not been proven
+
+Proven: the protocol and roles, against an in-memory transport (11 tests); that
+the native module loads and is reachable from JavaScript; that advertising
+starts without error and shows the right code.
+
+**Not proven: two devices actually finding each other.** That needs two
+simulators or two phones, and one simulator was deleted to free disk. Multipeer
+between simulators on one Mac usually works over the host network; Bluetooth
+does not exist there at all, so a court with no Wi-Fi can only be tested on real
+hardware.
+
 ### A camera needs the link least
 
 It records continuously. All it needs is the scoreboard's clock once at the

@@ -17,6 +17,8 @@ import { PlayerZone } from '../components/PlayerZone';
 import { UndoButton } from '../components/UndoButton';
 import { PlayersServingOverlay } from '../components/PlayersServingOverlay';
 import { useLandscapeOrientation } from '../hooks/useOrientation';
+import { SecondScreenOverlay } from '../components/SecondScreenOverlay';
+import { useHosting } from '../link/useHosting';
 import { theme } from '../styles/theme';
 import { t } from '../i18n';
 
@@ -51,6 +53,11 @@ export const ScoreScreen: React.FC<ScoreScreenProps> = ({
   useKeepAwake();
 
   const [showPlayersOverlay, setShowPlayersOverlay] = useState(false);
+  const [showSecondScreen, setShowSecondScreen] = useState(false);
+  // Off unless asked for: advertising costs radio and battery, and most matches
+  // are one phone on a bench.
+  const [hosting, setHosting] = useState(false);
+  const { code, connection, available } = useHosting(matchState, hosting);
   const [tapCount, setTapCount] = useState(0);
 
   // Timer calculation
@@ -185,11 +192,34 @@ export const ScoreScreen: React.FC<ScoreScreenProps> = ({
             />
           </TouchableOpacity>
 
+          {/* Absent in Expo Go, which has no native code for this. */}
+          {available && (
+            <TouchableOpacity
+              style={styles.iconControlBtn}
+              onPress={() => setShowSecondScreen(true)}
+            >
+              <Ionicons
+                name={hosting ? 'radio' : 'radio-outline'}
+                size={20}
+                color={hosting ? theme.colors.accent.primary : theme.colors.text.primary}
+              />
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity style={styles.iconControlBtn} onPress={onOpenSettings}>
             <Ionicons name="settings-outline" size={20} color={theme.colors.text.primary} />
           </TouchableOpacity>
         </View>
       </View>
+
+      <SecondScreenOverlay
+        visible={showSecondScreen}
+        hosting={hosting}
+        code={code}
+        connection={connection}
+        onToggleHosting={setHosting}
+        onClose={() => setShowSecondScreen(false)}
+      />
 
       {/* Mid-Game Players & Serving Modal */}
       <PlayersServingOverlay

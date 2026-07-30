@@ -3,7 +3,7 @@ import {
   isMatchLinkAvailable,
   NativePeer,
 } from '../../modules/match-link/src';
-import { Message, PeerInfo, Transport } from './protocol';
+import { ConnectionState, Message, PeerInfo, Transport } from './protocol';
 
 /**
  * The real transport: Multipeer Connectivity, wrapped to look like every other
@@ -55,6 +55,14 @@ export class MultipeerTransport implements Transport {
     // The native side moves opaque strings, so the shape of a message stays a
     // TypeScript concern and Swift never needs to learn what a match is.
     await this.native?.send(JSON.stringify(message));
+  }
+
+  onConnection(handler: (state: ConnectionState) => void): () => void {
+    if (!this.native) return () => {};
+    const subscription = this.native.addListener('onConnectionChanged', ({ state }) =>
+      handler(state)
+    );
+    return () => subscription.remove();
   }
 
   onMessage(handler: (message: Message, fromPeerId: string) => void): () => void {
