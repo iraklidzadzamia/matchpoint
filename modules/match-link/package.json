@@ -3,5 +3,8 @@
   "version": "1.0.0",
   "description": "Carries match messages between nearby devices over Multipeer Connectivity",
   "main": "src/index.ts",
-  "private": true
+  "private": true,
+  "license": "MIT",
+  "author": "MatchPoint",
+  "homepage": "https://github.com/iraklidzadzamia/matchpoint"
 }
