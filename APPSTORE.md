@@ -153,6 +153,13 @@ GitHub Pages serves them from `main` / `docs`. Both were fetched and return 200.
 
 ## Screenshots
 
+> **Stale — recapture before submitting.** These were taken on 29 July 2026 and
+> the app has moved on: there is no personal "Your Record" screen any more (it is
+> a table of every player), history is grouped into sessions, settings has a
+> games-per-set control, and setup no longer asks which side you are on.
+> Uploading them would advertise an app that does not exist. Reseed the
+> simulator and retake all six.
+
 In `store/screenshots/`, captured on an iPhone 17 Pro Max. Apple accepts
 **1320 × 2868** portrait and **2868 × 1320** landscape for the 6.9-inch size,
 and every file below is exactly one of those. Nothing else is mandatory now
@@ -190,6 +197,8 @@ the real engine, so every number in them is one the app actually produced.
    the Apple ID and creates the certificates itself. **Do this yourself — it
    needs your Apple credentials.**
 5. Submit the build: `npx eas-cli submit --platform ios`.
-6. Fill in the listing, upload the screenshots, and send it for review.
+6. **Retake the screenshots** — the ones in the repo predate the players table
+   and session grouping.
+7. Fill in the listing, upload the screenshots, and send it for review.
 
 Review is usually a day or two for a first submission.

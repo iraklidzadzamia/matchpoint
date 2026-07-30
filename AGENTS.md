@@ -318,6 +318,19 @@ not check those. Do not chase them.
 Verified on the build of 29 July 2026: encryption `false`, device family `[1]`,
 marketing icon opaque.
 
+## Americano: settings, not decisions baked in
+
+Points per round, number of courts, number of rounds, and whether pairs come
+from a schedule or from the current standings are all **settings**. Do not pick
+values and bury them in code — different groups play differently, and the user
+asked specifically not to hardcode what does not need hardcoding.
+
+The actual work is the schedule. With N players present and four to a court,
+something has to decide who partners whom in each round so that everybody plays
+a similar number of matches and with different partners. Standard tables exist
+for eight; five, six, seven and nine have to be computed. That algorithm is the
+same whatever the settings say.
+
 ## Sessions are derived, never stored
 
 An outing — court booked, several matches, everyone goes home — is worked out
