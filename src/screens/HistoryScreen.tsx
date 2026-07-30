@@ -124,24 +124,20 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
   const isEmpty = records !== null && records.length === 0;
 
   // One section per outing. A session with a single match says so plainly rather
-  // than reading "1 matches", and the win-loss part is dropped when none of the
-  // matches knew which side was yours.
+  // than reading "1 matches". No win count: the phone has no side of its own, so
+  // "2-1" here would not mean anything.
   const sections = useMemo(() => {
-    return groupIntoSessions(records ?? []).map((session) => {
-      const judged = session.won + session.lost;
-      const count =
+    return groupIntoSessions(records ?? []).map((session) => ({
+      day: sessionDayLabel(session.startedAt, {
+        today: t('ui.today'),
+        yesterday: t('ui.yesterday'),
+      }),
+      meta:
         session.played === 1
           ? t('ui.sessionOneMatch')
-          : t('ui.sessionMatches', { count: String(session.played) });
-      return {
-        day: sessionDayLabel(session.startedAt, {
-          today: t('ui.today'),
-          yesterday: t('ui.yesterday'),
-        }),
-        meta: judged > 0 ? `${count} · ${session.won}–${session.lost}` : count,
-        data: session.matches,
-      };
-    });
+          : t('ui.sessionMatches', { count: String(session.played) }),
+      data: session.matches,
+    }));
   }, [records]);
   const openRecord = records?.find((r) => r.id === openId) ?? null;
 

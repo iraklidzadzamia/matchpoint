@@ -40,7 +40,6 @@ function randomConfig(rng: () => number): MatchConfig {
     side1: { player1: 'A1', player2: 'A2' },
     side2: { player1: 'B1', player2: 'B2' },
     servingFirst: rng() < 0.5 ? 'side1' : 'side2',
-    scoreKeeper: rng() < 0.5 ? 'side1' : 'side2',
   };
 }
 

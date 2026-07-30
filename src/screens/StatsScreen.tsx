@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MatchRecord } from '../engine/types';
 import { loadHistory } from '../storage/matchStorage';
-import { computeCareerStats, formatTotalTime, HeadToHead } from '../engine/careerStats';
+import { computeGroupStats, formatTotalTime, PlayerStats } from '../engine/groupStats';
 import { SwipeBackView } from '../components/SwipeBackView';
 import { usePortraitOrientation } from '../hooks/useOrientation';
 import { theme } from '../styles/theme';
@@ -14,40 +14,27 @@ interface StatsScreenProps {
   onBack: () => void;
 }
 
-const Stat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <View style={styles.stat}>
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
+/** A share as a whole number, or "—" when there is nothing to divide by. */
+function percent(part: number, whole: number): string {
+  if (whole === 0) return '—';
+  return `${Math.round((part / whole) * 100)}`;
+}
+
+const Row: React.FC<{ player: PlayerStats }> = ({ player }) => (
+  <View style={styles.row}>
+    <Text style={styles.name} numberOfLines={1}>
+      {player.name}
+    </Text>
+    <Text style={styles.cell}>{player.played}</Text>
+    <Text style={[styles.cell, styles.cellWide]}>
+      {player.won}–{player.lost}
+    </Text>
+    <Text style={styles.cell}>{percent(player.pointsWon, player.pointsPlayed)}</Text>
+    <Text style={[styles.cell, styles.cellWide]}>
+      {percent(player.servePointsWon, player.servePointsPlayed)}
+    </Text>
   </View>
 );
-
-/**
- * One row of a head-to-head table. The bar is the share of those matches you
- * won, so a long green bar is somebody you beat — it is drawn from `won` and
- * `lost` rather than `played`, because a row can hold matches too old to judge.
- */
-const Record: React.FC<{ row: HeadToHead }> = ({ row }) => {
-  const judged = row.won + row.lost;
-  const share = judged > 0 ? row.won / judged : 0;
-
-  return (
-    <View style={styles.recordRow}>
-      <View style={styles.recordTop}>
-        <Text style={styles.recordName} numberOfLines={1}>
-          {row.name}
-        </Text>
-        <Text style={styles.recordScore}>
-          {judged > 0 ? `${row.won}–${row.lost}` : `${row.played}`}
-        </Text>
-      </View>
-      {judged > 0 ? (
-        <View style={styles.barTrack}>
-          <View style={[styles.barFill, { width: `${Math.round(share * 100)}%` }]} />
-        </View>
-      ) : null}
-    </View>
-  );
-};
 
 export const StatsScreen: React.FC<StatsScreenProps> = ({ onBack }) => {
   usePortraitOrientation();
@@ -57,8 +44,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ onBack }) => {
     loadHistory().then(setHistory);
   }, []);
 
-  const stats = useMemo(() => computeCareerStats(history), [history]);
-  const unranked = stats.played - stats.ranked;
+  const stats = useMemo(() => computeGroupStats(history), [history]);
 
   return (
     <SwipeBackView onBack={onBack}>
@@ -71,72 +57,49 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ onBack }) => {
           <View style={styles.headerBtn} />
         </View>
 
-        {stats.played === 0 ? (
+        {stats.players.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="stats-chart-outline" size={40} color={theme.colors.text.muted} />
             <Text style={styles.emptyText}>{t('ui.statsEmpty')}</Text>
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
-            <View style={styles.statGrid}>
-              <Stat label={t('ui.statPlayed')} value={String(stats.played)} />
-              <Stat label={t('ui.statWon')} value={String(stats.won)} />
-              <Stat label={t('ui.statLost')} value={String(stats.lost)} />
-              <Stat
-                label={t('ui.statWinRate')}
-                value={stats.winRate === null ? '—' : `${Math.round(stats.winRate * 100)}%`}
-              />
-              <Stat label={t('ui.statOnCourt')} value={formatTotalTime(stats.totalSec)} />
-              <Stat label={t('ui.statStreak')} value={String(stats.currentStreak)} />
+            <Text style={styles.summary}>
+              {stats.matchesCounted === 1
+                ? t('ui.statsSummaryOne', { time: formatTotalTime(stats.totalSec) })
+                : t('ui.statsSummary', {
+                    count: String(stats.matchesCounted),
+                    time: formatTotalTime(stats.totalSec),
+                  })}
+            </Text>
+
+            <View style={styles.card}>
+              <View style={[styles.row, styles.headRow]}>
+                <Text style={[styles.name, styles.headText]}>{t('ui.colPlayer')}</Text>
+                <Text style={[styles.cell, styles.headText]}>{t('ui.colMatches')}</Text>
+                <Text style={[styles.cell, styles.cellWide, styles.headText]}>
+                  {t('ui.colWinLoss')}
+                </Text>
+                <Text style={[styles.cell, styles.headText]}>{t('ui.colPoints')}</Text>
+                <Text style={[styles.cell, styles.cellWide, styles.headText]}>
+                  {t('ui.colServe')}
+                </Text>
+              </View>
+              {stats.players.map((player) => (
+                <Row key={player.name} player={player} />
+              ))}
             </View>
 
-            {unranked > 0 ? (
+            <Text style={styles.legend}>{t('ui.statsLegend')}</Text>
+
+            {/* Named rather than hidden: these matches happened, they just cannot
+                say who played them. */}
+            {stats.matchesSkipped > 0 ? (
               <Text style={styles.caveat}>
-                {unranked === 1
-                  ? t('ui.statUnrankedOne')
-                  : t('ui.statUnrankedMany', { count: String(unranked) })}
+                {stats.matchesSkipped === 1
+                  ? t('ui.statsSkippedOne')
+                  : t('ui.statsSkippedMany', { count: String(stats.matchesSkipped) })}
               </Text>
-            ) : null}
-
-            {stats.bySport.length > 1 ? (
-              <>
-                <Text style={styles.sectionLabel}>{t('ui.statBySport')}</Text>
-                <View style={styles.card}>
-                  {stats.bySport.map((split) => (
-                    <Record
-                      key={split.sport}
-                      row={{
-                        name: split.sport === 'tennis' ? t('ui.tennis') : t('ui.padel'),
-                        played: split.played,
-                        won: split.won,
-                        lost: split.lost,
-                      }}
-                    />
-                  ))}
-                </View>
-              </>
-            ) : null}
-
-            {stats.opponents.length > 0 ? (
-              <>
-                <Text style={styles.sectionLabel}>{t('ui.statOpponents')}</Text>
-                <View style={styles.card}>
-                  {stats.opponents.slice(0, 8).map((row) => (
-                    <Record key={row.name} row={row} />
-                  ))}
-                </View>
-              </>
-            ) : null}
-
-            {stats.partners.length > 0 ? (
-              <>
-                <Text style={styles.sectionLabel}>{t('ui.statPartners')}</Text>
-                <View style={styles.card}>
-                  {stats.partners.slice(0, 8).map((row) => (
-                    <Record key={row.name} row={row} />
-                  ))}
-                </View>
-              </>
             ) : null}
           </ScrollView>
         )}
@@ -185,86 +148,62 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     paddingBottom: theme.spacing.xl,
   },
-  statGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  stat: {
-    flexGrow: 1,
-    flexBasis: '28%',
-    backgroundColor: theme.colors.bg.surface,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.glass.border,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.sm,
-  },
-  statValue: {
-    color: theme.colors.text.primary,
-    fontSize: 22,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
-  },
-  statLabel: {
+  summary: {
     color: theme.colors.text.secondary,
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  caveat: {
-    color: theme.colors.text.muted,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: theme.spacing.sm,
-  },
-  sectionLabel: {
-    color: theme.colors.text.muted,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.xs,
+    fontSize: 14,
+    marginBottom: theme.spacing.md,
   },
   card: {
     backgroundColor: theme.colors.bg.surface,
     borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.glass.border,
-    padding: theme.spacing.md,
-    gap: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
   },
-  recordRow: {
-    gap: 6,
-  },
-  recordTop: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing.sm,
+    paddingVertical: 11,
   },
-  recordName: {
+  headRow: {
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.glass.border,
+    paddingBottom: 8,
+  },
+  headText: {
+    color: theme.colors.text.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  name: {
+    flex: 1,
     color: theme.colors.text.primary,
     fontSize: 15,
     fontWeight: '600',
-    flexShrink: 1,
   },
-  recordScore: {
+  cell: {
+    width: 40,
+    textAlign: 'right',
     color: theme.colors.text.secondary,
     fontSize: 15,
-    fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
-  barTrack: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.bg.elevated,
-    overflow: 'hidden',
+  cellWide: {
+    width: 52,
   },
-  barFill: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.accent.primary,
+  legend: {
+    color: theme.colors.text.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: theme.spacing.sm,
+  },
+  caveat: {
+    color: theme.colors.text.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: theme.spacing.sm,
   },
 });

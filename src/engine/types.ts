@@ -27,9 +27,8 @@ export interface MatchConfig {
   
   side1: PlayerInfo;
   side2: PlayerInfo;
-  
+
   servingFirst: PlayerSide;
-  scoreKeeper: PlayerSide;
 }
 
 // A finished match, flattened to just what the history list needs — keeping
@@ -46,11 +45,17 @@ export interface MatchRecord {
   startedAt: number;
   durationSec: number;
   pointLog: PointRecord[];
-  // Which side the person holding the phone was on. Without it a finished match
-  // cannot say whether *you* won, only that side 1 or side 2 did — so every
-  // total across matches would be meaningless. Optional because matches saved
-  // before this field existed genuinely do not know.
-  yourSide?: PlayerSide;
+  /**
+   * Each side's players, one name per entry. `side1Name` is these joined for
+   * display; these are what anything per-player reads, because splitting a
+   * display string back apart is guesswork.
+   *
+   * Optional: records written before this existed only ever kept the joined
+   * name, and a name like "Irakli & Nika" cannot be told apart from one player
+   * who happens to have "&" in their name.
+   */
+  side1Players?: string[];
+  side2Players?: string[];
 }
 
 export interface AppSettings {

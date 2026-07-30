@@ -15,7 +15,8 @@ function record(startedAt: number, minutes = 45, over: Partial<MatchRecord> = {}
     setScores: [[6, 4], [6, 3]],
     setsWon: [2, 0],
     winner: 'side1',
-    yourSide: 'side1',
+    side1Players: ['Irakli', 'Nika'],
+    side2Players: ['Rafael', 'Juan'],
     startedAt,
     durationSec: minutes * 60,
     pointLog: [],
@@ -69,27 +70,20 @@ describe('sessions', () => {
     expect(sessions[0].played).toBe(2);
   });
 
-  test('wins and losses are counted per session, from your own side', () => {
+  test('a session keeps its matches newest first', () => {
     const base = 10 * HOUR;
     const history = [
-      record(base + 2 * (55 * 60_000), 45, { winner: 'side2', yourSide: 'side1' }),
-      record(base + 55 * 60_000, 45, { winner: 'side2', yourSide: 'side2' }),
-      record(base, 45, { winner: 'side1', yourSide: 'side1' }),
+      record(base + 2 * (55 * 60_000)),
+      record(base + 55 * 60_000),
+      record(base),
     ];
 
     const [session] = groupIntoSessions(history);
-    expect(session.won).toBe(2);
-    expect(session.lost).toBe(1);
-  });
-
-  test('a match that never knew your side is played but not judged', () => {
-    const legacy = record(10 * HOUR);
-    delete legacy.yourSide;
-
-    const [session] = groupIntoSessions([record(11 * HOUR), legacy]);
-    expect(session.played).toBe(2);
-    expect(session.won).toBe(1);
-    expect(session.lost).toBe(0);
+    expect(session.matches.map((m) => m.startedAt)).toEqual([
+      base + 2 * (55 * 60_000),
+      base + 55 * 60_000,
+      base,
+    ]);
   });
 
   test('elapsed time spans the whole outing, breaks included', () => {

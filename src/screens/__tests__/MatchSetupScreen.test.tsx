@@ -23,7 +23,6 @@ const baseConfig: MatchConfig = {
   side1: { player1: 'Side 1' },
   side2: { player1: 'Side 2' },
   servingFirst: 'side1',
-  scoreKeeper: 'side1',
 };
 
 // The screen loads the last match's names on mount, so every render has to
@@ -77,9 +76,13 @@ describe('MatchSetupScreen', () => {
     expect(texts).not.toContain('Custom Names');
   });
 
-  test('asks which side you are on, not who keeps score', async () => {
+  // Setting up a match used to ask which side you were on, so statistics could
+  // be about "you". Statistics are now a row per player, so the question earns
+  // nothing and the step is gone.
+  test('does not ask which side you are on', async () => {
     const texts = await renderTexts();
-    expect(texts).toContain('Which side are you on?');
+    expect(texts).not.toContain('Which side are you on?');
+    expect(texts).toContain('Who serves first?');
   });
 
   // The label fix alone was not enough: the invented partner also travelled

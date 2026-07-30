@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MatchState } from '../engine/types';
 import { getSideNames } from '../engine/scoring';
 import { theme } from '../styles/theme';
-import { t } from '../i18n';
 
 interface SetScoreBarProps {
   state: MatchState;
@@ -44,11 +43,6 @@ export const SetScoreBar: React.FC<SetScoreBarProps> = ({ state, onPressPlayers 
         >
           {leftName}
         </Text>
-        {state.config.scoreKeeper === leftSide && (
-          <View style={styles.youBadge}>
-            <Text style={styles.youText}>{t('ui.you')}</Text>
-          </View>
-        )}
       </View>
 
       {/* Set Score Matrix */}
@@ -73,11 +67,6 @@ export const SetScoreBar: React.FC<SetScoreBarProps> = ({ state, onPressPlayers 
 
       {/* Right Side Info */}
       <View style={[styles.sideGroup, styles.sideGroupRight]}>
-        {state.config.scoreKeeper === rightSide && (
-          <View style={styles.youBadge}>
-            <Text style={styles.youText}>{t('ui.you')}</Text>
-          </View>
-        )}
         <Text
           style={[styles.nameText, styles.nameTextRight, !isLeftServing && styles.nameTextServing]}
           numberOfLines={1}
@@ -127,20 +116,6 @@ const styles = StyleSheet.create({
   },
   nameTextServing: {
     color: theme.colors.accent.ball,
-  },
-  youBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.glass.bg,
-    borderWidth: 1,
-    borderColor: theme.colors.glass.border,
-  },
-  youText: {
-    color: theme.colors.text.secondary,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
   },
   scoreMatrix: {
     flexDirection: 'row',

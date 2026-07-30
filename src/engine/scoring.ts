@@ -47,6 +47,17 @@ export function getSideNames(config: MatchConfig, side: PlayerSide): string {
   return info.player1 || (side === 'side1' ? 'Side 1' : 'Side 2');
 }
 
+/**
+ * A side's players as separate names, skipping any left blank. In singles the
+ * second name is ignored even if one was typed before the format was switched.
+ */
+export function getSidePlayers(config: MatchConfig, side: PlayerSide): string[] {
+  const info = side === 'side1' ? config.side1 : config.side2;
+  const names = [info.player1];
+  if (config.format === 'doubles' && info.player2) names.push(info.player2);
+  return names.map((n) => n.trim()).filter(Boolean);
+}
+
 export function getServingPlayerName(state: MatchState): string {
   const side = state.serving;
   const info = side === 'side1' ? state.config.side1 : state.config.side2;
@@ -71,7 +82,8 @@ export function toMatchRecord(state: MatchState): MatchRecord | null {
     setScores: state.completedSets.map((s) => [...s] as [number, number]),
     setsWon: [...state.setsWon],
     winner: state.matchWinner,
-    yourSide: state.config.scoreKeeper,
+    side1Players: getSidePlayers(state.config, 'side1'),
+    side2Players: getSidePlayers(state.config, 'side2'),
     startedAt: state.matchStartTime,
     pointLog: state.pointLog.map((p) => ({ ...p })),
     durationSec: Math.max(0, Math.floor((endTime - state.matchStartTime) / 1000)),

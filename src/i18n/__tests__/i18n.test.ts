@@ -16,7 +16,6 @@ const config: MatchConfig = {
   side1: { player1: 'Irakli' },
   side2: { player1: 'Rafael' },
   servingFirst: 'side1',
-  scoreKeeper: 'side1',
 };
 
 describe('score announcements', () => {

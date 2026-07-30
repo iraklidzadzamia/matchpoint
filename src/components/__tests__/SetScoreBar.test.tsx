@@ -21,7 +21,6 @@ const config: MatchConfig = {
   side1: { player1: 'Irakli' },
   side2: { player1: 'Rafael' },
   servingFirst: 'side1',
-  scoreKeeper: 'side1',
 };
 
 function renderTexts(state: MatchState): string[] {
@@ -63,17 +62,12 @@ describe('SetScoreBar', () => {
     expect(texts.indexOf('1')).toBeLessThan(texts.indexOf('3'));
   });
 
-  test('marks the scorekeeper side with a YOU badge, following the court swap', () => {
-    const state = { ...createMatch({ ...config, scoreKeeper: 'side1' }), games: [0, 0] as [number, number] };
-    const texts = renderTexts(state);
-    expect(texts).toContain('YOU');
-    // Side 1 is on the left, so the badge sits before the opponent's name
-    expect(texts.indexOf('YOU')).toBeLessThan(texts.indexOf('Rafael'));
-
-    const swapped = { ...state, courtSide: 'swapped' as const };
-    const swappedTexts = renderTexts(swapped);
-    // Side 1 moved right, so its badge follows and now comes after Rafael
-    expect(swappedTexts.indexOf('YOU')).toBeGreaterThan(swappedTexts.indexOf('Rafael'));
+  // The bar used to badge one side as YOU, from a scoreKeeper setting. The phone
+  // is a scoreboard and has no side: it gets passed around, and whoever holds it
+  // is often not playing. Nothing on this bar should claim otherwise.
+  test('claims no side as the viewer', () => {
+    const state = { ...createMatch(config), games: [0, 0] as [number, number] };
+    expect(renderTexts(state)).toEqual(['Irakli', '0', '–', '0', 'Rafael']);
   });
 
   test('mirrors completed set scores too', () => {

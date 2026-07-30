@@ -22,7 +22,6 @@ const config: MatchConfig = {
   side1: { player1: 'Irakli', player2: 'Nika' },
   side2: { player1: 'Rafael', player2: 'Juan' },
   servingFirst: 'side1',
-  scoreKeeper: 'side1',
 };
 
 /** Side 1 takes it 6-0 6-0, one point every half minute. */

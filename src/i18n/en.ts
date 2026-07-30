@@ -39,8 +39,6 @@ export const en = {
     swapSides: 'Swap Sides',
     autoSwapSides: 'Flip the screen automatically',
     autoSwapSidesHint: 'Mirrors the layout when players change ends. Off keeps each side in place, so the tap zones never move — you can always flip by hand with Swap Sides.',
-    whoKeepsScore: 'Which side are you on?',
-    you: 'YOU',
     whoServesFirst: 'Who serves first?',
     singles: 'Singles',
     doubles: 'Doubles',
@@ -75,24 +73,24 @@ export const en = {
     clearHistoryMessage: 'All saved results will be deleted. This cannot be undone.',
     // Match detail
     matchDetail: 'Match',
-    stats: 'Your Record',
-    statsEmpty: 'Play a match and it will show up here.',
-    statPlayed: 'Played',
-    statWon: 'Won',
-    statLost: 'Lost',
-    statWinRate: 'Win rate',
-    statStreak: 'Win streak',
-    statOnCourt: 'On court',
-    statPoints: 'Points played',
-    statBySport: 'By sport',
-    statOpponents: 'Played against',
-    statPartners: 'Played with',
-    // Two whole sentences rather than a pluralised noun — "1 match … they count"
-    // is the kind of seam that makes an app feel machine-written.
-    statUnrankedOne:
-      'One older match never recorded which side you were on, so it counts as played but not as won or lost.',
-    statUnrankedMany:
-      '{count} older matches never recorded which side you were on, so they count as played but not as won or lost.',
+    // A table of the whole group, not a personal page: the phone is a
+    // scoreboard that gets passed around, and whoever holds it often is not
+    // playing at all.
+    stats: 'Players',
+    statsEmpty: 'Play a match and everyone who played shows up here.',
+    statsSummary: '{count} matches · {time} on court',
+    statsSummaryOne: '1 match · {time} on court',
+    colPlayer: 'Player',
+    colMatches: 'M',
+    colWinLoss: 'W–L',
+    colPoints: 'Pts',
+    colServe: 'Serve',
+    statsLegend:
+      'M is matches played, Pts the share of all points their side won, Serve the share they won on their own serve.',
+    statsSkippedOne:
+      'One older match only saved the sides as one name each, so it is not counted here.',
+    statsSkippedMany:
+      '{count} older matches only saved the sides as one name each, so they are not counted here.',
     duration: 'Duration',
     totalPoints: 'Points played',
     pointsWon: 'Points won',

@@ -16,9 +16,6 @@ export interface Session {
   /** Newest first, matching the order history arrives in. */
   matches: MatchRecord[];
   played: number;
-  /** Only counts matches that know which side was yours — see careerStats. */
-  won: number;
-  lost: number;
   /** Time from the first serve to the last point, gaps between matches included. */
   elapsedSec: number;
 }
@@ -51,20 +48,11 @@ export function groupIntoSessions(
     // `current` is newest-first, so the outing began with the last of them.
     const oldest = current[current.length - 1];
     const newest = current[0];
-    let won = 0;
-    let lost = 0;
-    for (const m of current) {
-      if (!m.yourSide) continue;
-      if (m.winner === m.yourSide) won += 1;
-      else lost += 1;
-    }
     sessions.push({
       startedAt: oldest.startedAt,
       endedAt: endOf(newest),
       matches: current,
       played: current.length,
-      won,
-      lost,
       elapsedSec: Math.max(0, Math.round((endOf(newest) - oldest.startedAt) / 1000)),
     });
     current = [];

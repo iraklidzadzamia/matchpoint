@@ -362,30 +362,39 @@ tie-break games, and a record only stores set scores, so the tie-break has to be
 inferred (`max === min + 1`, which holds for 7-6, 5-4 and 9-8 alike). That
 deserves its own thought rather than being bolted on here.
 
-## Totals across matches: `yourSide` is what makes them mean anything
+## There is no "you" in this app
 
-A `MatchRecord` used to save only that side 1 or side 2 won. Which side the
-person holding the phone was on lived in `MatchConfig.scoreKeeper` and was
-thrown away when the match finished — so "matches won" could not be computed at
-all, only "matches where side 1 won", which means nothing once names move
-between sides. `toMatchRecord` now copies it across as `yourSide`.
+The phone is a scoreboard. It gets passed around, and whoever is holding it is
+often not playing — with six people and four on court, two are always sitting
+down. So the app has no notion of a user:
 
-It is **optional**, because records written before it existed genuinely do not
-know, and `careerStats.ts` never guesses:
+- `MatchConfig.scoreKeeper` is **gone**, and so is the "which side are you on?"
+  step in setup and the YOU badge on the score bar.
+- Statistics are a **row per player**, not a personal page. Everyone reads their
+  own row.
 
-- they still count towards `played` — they happened
-- they cannot count towards `won` or `lost`
-- `winRate` divides by `ranked`, not by `played`
-- an unjudgeable match in the middle of a run does not break `currentStreak`
+This was reversed once already: an earlier pass added `yourSide` to
+`MatchRecord` and built a "Your Record" screen on it. Do not reintroduce it. If
+something seems to need a current user, the thing it actually needs is probably
+the **leader** — whoever holds the watch for this match — which is a per-match
+role, not an identity.
 
-That is why the screen shows a line admitting how many matches it could not
-judge. Do not "simplify" this by assuming side 1, and do not drop those records
-from the count — both are quietly wrong in a way nobody would notice.
+## Per-player numbers rest on `side1Players` / `side2Players`
 
-The partner in doubles is read as the second name on your own side, since
-nothing records which of the pair held the phone.
+A record keeps both the joined display name (`side1Name`) and the players as
+separate entries. Everything per-player reads the arrays. Splitting the display
+string on " & " was the alternative, and it is guesswork: a name can contain an
+ampersand, and nothing tells you which of the two people held the phone.
 
-### Putting a finished match into history without playing one
+Records written before the arrays existed are **skipped and counted as skipped**
+— `computeGroupStats` reports `matchesSkipped` and the screen says how many.
+They are not guessed at and not silently dropped.
+
+Serve is credited to the individual through `servedByPlayer`, which indexes into
+that side's array. A doubles config with a blank partner can leave the index
+pointing past the end, so it is checked rather than trusted.
+
+### Putting a finished match into history without playing one### Putting a finished match into history without playing one
 
 Reaching the match summary by tapping takes about a hundred taps. AsyncStorage
 on the simulator is a plain directory, so seed it instead: compile the engine

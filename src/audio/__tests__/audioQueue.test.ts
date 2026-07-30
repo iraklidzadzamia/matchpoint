@@ -42,7 +42,6 @@ const config: MatchConfig = {
   side1: { player1: 'Irakli' },
   side2: { player1: 'Rafael' },
   servingFirst: 'side1',
-  scoreKeeper: 'side1',
 };
 
 /** A state whose last event is a plain point. */

@@ -20,7 +20,6 @@ const config: MatchConfig = {
   side1: { player1: 'Irakli' },
   side2: { player1: 'Rafael' },
   servingFirst: 'side1',
-  scoreKeeper: 'side1',
 };
 
 /** Plays a real match up to 6:6, so the tie-break is entered the way it is in play. */

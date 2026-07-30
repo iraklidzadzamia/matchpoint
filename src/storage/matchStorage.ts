@@ -33,7 +33,6 @@ export const defaultMatchConfig: MatchConfig = {
   side1: { player1: 'Side 1' },
   side2: { player1: 'Side 2' },
   servingFirst: 'side1',
-  scoreKeeper: 'side1',
 };
 
 export async function saveCurrentMatch(state: MatchState | null): Promise<void> {

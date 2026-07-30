@@ -55,7 +55,6 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
     });
   }, []);
 
-  const [scoreKeeper, setScoreKeeper] = useState<PlayerSide>('side1');
   const [servingFirst, setServingFirst] = useState<PlayerSide>('side1');
 
   const handleSwapSidesInput = () => {
@@ -98,7 +97,6 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
       side1: buildSide('side1'),
       side2: buildSide('side2'),
       servingFirst,
-      scoreKeeper,
     };
 
     saveLastPlayers({
@@ -186,15 +184,6 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
             <NameInput side="side2" value={side2P2} onChangeText={setSide2P2} placeholder="Player 2" />
           )}
         </View>
-
-        {/* Who keeps score? */}
-        <SideSelector
-          title={t('ui.whoKeepsScore')}
-          side1Label={getSideLabel('side1')}
-          side2Label={getSideLabel('side2')}
-          selectedSide={scoreKeeper}
-          onSelectSide={setScoreKeeper}
-        />
 
         {/* Who serves first? */}
         <SideSelector
