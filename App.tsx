@@ -19,11 +19,12 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 import { MatchSummaryScreen } from './src/screens/MatchSummaryScreen';
 import { HistoryScreen } from './src/screens/HistoryScreen';
 import { StatsScreen } from './src/screens/StatsScreen';
+import { JoinScreen } from './src/screens/JoinScreen';
 import { scoreAnnouncer } from './src/audio/scoreAnnouncer';
 import { soundEffects } from './src/audio/soundEffects';
 import { audioQueue } from './src/audio/audioQueue';
 
-type Screen = 'home' | 'setup' | 'score' | 'summary' | 'history' | 'stats';
+type Screen = 'home' | 'setup' | 'score' | 'summary' | 'history' | 'stats' | 'join';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -144,6 +145,7 @@ export default function App() {
           onOpenSettings={() => setSettingsVisible(true)}
           onOpenHistory={() => setCurrentScreen('history')}
           onOpenStats={() => setCurrentScreen('stats')}
+          onJoinMatch={() => setCurrentScreen('join')}
         />
       )}
 
@@ -156,6 +158,12 @@ export default function App() {
       {currentScreen === 'stats' && (
         <View style={StyleSheet.absoluteFill}>
           <StatsScreen onBack={() => setCurrentScreen('home')} />
+        </View>
+      )}
+
+      {currentScreen === 'join' && (
+        <View style={StyleSheet.absoluteFill}>
+          <JoinScreen onBack={() => setCurrentScreen('home')} />
         </View>
       )}
 

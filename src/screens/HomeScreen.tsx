@@ -13,6 +13,7 @@ import { theme } from '../styles/theme';
 import { loadCurrentMatch, loadHistory } from '../storage/matchStorage';
 import { MatchScoreLines } from '../components/MatchScoreLines';
 import { usePortraitOrientation } from '../hooks/useOrientation';
+import { MultipeerTransport } from '../link/multipeerTransport';
 import { t } from '../i18n';
 
 interface HomeScreenProps {
@@ -27,6 +28,7 @@ interface HomeScreenProps {
   onOpenSettings: () => void;
   onOpenHistory: () => void;
   onOpenStats: () => void;
+  onJoinMatch: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -36,6 +38,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenSettings,
   onOpenHistory,
   onOpenStats,
+  onJoinMatch,
 }) => {
   usePortraitOrientation();
 
@@ -95,6 +98,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <Ionicons name="add-circle-outline" size={24} color={theme.colors.bg.base} />
           <Text style={styles.newMatchBtnText}>{t('ui.newMatch')}</Text>
         </TouchableOpacity>
+
+        {/* Absent in Expo Go, which has no native code for this. */}
+        {MultipeerTransport.available && (
+          <TouchableOpacity style={styles.joinBtn} onPress={onJoinMatch} activeOpacity={0.85}>
+            <Ionicons name="phone-portrait-outline" size={20} color={theme.colors.text.secondary} />
+            <Text style={styles.joinBtnText}>{t('ui.joinMatch')}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.footerRow}>
@@ -210,6 +221,22 @@ const styles = StyleSheet.create({
   continueBtnText: {
     color: theme.colors.accent.primary,
     fontSize: 17,
+    fontWeight: '700',
+  },
+  joinBtn: {
+    height: 52,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.glass.border,
+    backgroundColor: theme.colors.bg.surface,
+  },
+  joinBtnText: {
+    color: theme.colors.text.secondary,
+    fontSize: 16,
     fontWeight: '700',
   },
   footerRow: {

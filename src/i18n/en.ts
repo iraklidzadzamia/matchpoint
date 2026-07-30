@@ -29,6 +29,10 @@ export const en = {
     settings: 'Settings',
     history: 'Match History',
     lastMatch: 'Last match',
+    joinMatch: 'Join a match',
+    lookingForMatches: 'Looking for matches nearby',
+    joinHint:
+      'Open MatchPoint on the phone keeping score and start a match. It will show a four-digit code — pick the one here with the same code.',
     today: 'Today',
     yesterday: 'Yesterday',
     sessionOneMatch: '1 match',

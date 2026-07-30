@@ -345,6 +345,24 @@ a test covers exactly that.
 The code comes from `matchStartTime`, so it survives a restart. A code held in
 memory would not.
 
+### Verifying a native build actually contains the module
+
+A build going green proves nothing. The very first one succeeded with the module
+silently absent — no podspec, so CocoaPods never compiled the Swift, and nothing
+about that fails loudly. Check the binary:
+
+```bash
+strings MatchPoint.app/MatchPoint | grep -c MatchLinkModule   # must not be 0
+otool -L MatchPoint.app/MatchPoint | grep -i MultipeerConnectivity
+```
+
+Then check at runtime, which is the only real proof: the "Join a match" button on
+the home screen renders only when `MultipeerTransport.available` is true, so
+seeing it means JavaScript reached the native module.
+
+`timeout` does not exist on macOS. Two attempts to compile locally silently did
+nothing because of it and looked like a hanging build — check exit codes.
+
 ### The native side, and what it must not do
 
 `modules/match-link/` is a local Expo module wrapping Multipeer Connectivity.
