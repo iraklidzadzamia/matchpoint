@@ -153,28 +153,23 @@ GitHub Pages serves them from `main` / `docs`. Both were fetched and return 200.
 
 ## Screenshots
 
-> **Stale — recapture before submitting.** These were taken on 29 July 2026 and
-> the app has moved on: there is no personal "Your Record" screen any more (it is
-> a table of every player), history is grouped into sessions, settings has a
-> games-per-set control, and setup no longer asks which side you are on.
-> Uploading them would advertise an app that does not exist. Reseed the
-> simulator and retake all six.
+In `store/screenshots/`, captured on an iPhone 17 Pro Max on 30 July 2026 and
+current with the app. Apple accepts **1320 × 2868** portrait and **2868 × 1320**
+landscape for the 6.9-inch size, and every file below is exactly one of those.
+Nothing else is mandatory now that the app is iPhone-only.
 
-In `store/screenshots/`, captured on an iPhone 17 Pro Max. Apple accepts
-**1320 × 2868** portrait and **2868 × 1320** landscape for the 6.9-inch size,
-and every file below is exactly one of those. Nothing else is mandatory now
-that the app is iPhone-only.
+Upload in this order — the first three are what people see in search results:
 
-Upload in this order — the first two are what people see in search results:
-
-| # | File | Size |
+| # | File | What it shows |
 |---|---|---|
-| 1 | `01-score-landscape.png` | 2868 × 1320 |
-| 2 | `02-detail.png` | 1320 × 2868 |
-| 3 | `03-setup.png` | 1320 × 2868 |
-| 4 | `04-history.png` | 1320 × 2868 |
-| 5 | `05-settings.png` | 1320 × 2868 |
-| 6 | `06-home.png` (optional) | 1320 × 2868 |
+| 1 | `01-score-landscape.png` | The score screen mid-match, 2868 × 1320 |
+| 2 | `02-setup.png` | Tapping players in, with a suggested pairing |
+| 3 | `03-session.png` | One evening: who played and how it went |
+| 4 | `04-players.png` | The table across every match |
+| 5 | `05-detail.png` | A finished match, including points won on serve |
+| 6 | `06-history.png` | History grouped into sessions |
+| 7 | `07-settings.png` | The three ways to play 40:40 |
+| 8 | `08-home.png` (optional) | The home screen with a match in progress |
 
 > **About the first one.** The score screen is landscape-only, so it is a
 > landscape screenshot while the rest are portrait. Apple's specification lists
@@ -197,8 +192,9 @@ the real engine, so every number in them is one the app actually produced.
    the Apple ID and creates the certificates itself. **Do this yourself — it
    needs your Apple credentials.**
 5. Submit the build: `npx eas-cli submit --platform ios`.
-6. **Retake the screenshots** — the ones in the repo predate the players table
-   and session grouping.
-7. Fill in the listing, upload the screenshots, and send it for review.
+6. Fill in the listing, upload the screenshots, and send it for review.
+
+> Screenshots go stale every time a screen changes. Before uploading, open the
+> eight files and check they still look like the app you are shipping.
 
 Review is usually a day or two for a first submission.
