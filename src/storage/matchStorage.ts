@@ -167,6 +167,22 @@ export async function addToRoster(names: string[]): Promise<string[]> {
 }
 
 /**
+ * Takes a name out of the picker. Their matches and their row in the players
+ * table are untouched — those happened. This only stops the name being offered
+ * every time, for somebody who turned up once.
+ */
+export async function removeFromRoster(name: string): Promise<string[]> {
+  try {
+    const roster = (await loadRoster()).filter((n) => n !== name);
+    await AsyncStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
+    return roster;
+  } catch (err) {
+    console.warn('Remove from roster error:', err);
+    return loadRoster();
+  }
+}
+
+/**
  * Who turned up today. Stored with the time so it expires on its own: come back
  * tomorrow, or after a long enough break, and the app asks again rather than
  * assuming last week's six are standing on the court.

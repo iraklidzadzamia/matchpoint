@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,7 @@ import {
   addToRoster,
   loadPresent,
   savePresent,
+  removeFromRoster,
   loadHistory,
 } from '../storage/matchStorage';
 import { t } from '../i18n';
@@ -132,6 +134,26 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
 
   const waiting = sittingOut(sessionMatches, present);
   const [editingPresent, setEditingPresent] = useState(false);
+
+  const confirmRemove = (name: string) => {
+    Alert.alert(t('ui.removePlayerTitle', { name }), t('ui.removePlayerMessage'), [
+      { text: t('ui.cancel'), style: 'cancel' },
+      {
+        text: t('ui.remove'),
+        style: 'destructive',
+        onPress: async () => {
+          setRoster(await removeFromRoster(name));
+          const stillHere = present.filter((n) => n !== name);
+          setPresent(stillHere);
+          savePresent(stillHere);
+          // And out of the match being built, or a removed name would still start it.
+          slots.forEach(([value, set]) => {
+            if (value.trim() === name) set('');
+          });
+        },
+      },
+    ]);
+  };
 
   const handleSwapSidesInput = () => {
     setSide1P1(side2P1);
@@ -259,6 +281,15 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
                       <Ionicons name="checkmark" size={14} color={theme.colors.accent.primary} />
                     )}
                     <Text style={[styles.chipText, active && styles.chipTextActive]}>{name}</Text>
+                    {editingPresent && (
+                      <TouchableOpacity
+                        style={styles.chipRemove}
+                        onPress={() => confirmRemove(name)}
+                        hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+                      >
+                        <Ionicons name="close" size={15} color={theme.colors.text.muted} />
+                      </TouchableOpacity>
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -404,6 +435,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.glass.border,
     backgroundColor: theme.colors.bg.surface,
+  },
+  chipRemove: {
+    marginLeft: 2,
+    marginRight: -4,
+    padding: 2,
   },
   chipActive: {
     borderColor: theme.colors.accent.primary,

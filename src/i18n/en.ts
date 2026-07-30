@@ -35,6 +35,10 @@ export const en = {
     whoIsHere: 'Who is here',
     notPlayedYet: 'Not played yet: {names}',
     suggest: 'Suggest',
+    remove: 'Remove',
+    removePlayerTitle: 'Remove {name} from the list?',
+    removePlayerMessage:
+      'Their matches and their numbers stay. This only stops the name being offered every time.',
     startMatch: 'Start Match',
     undo: 'Undo',
     done: 'Done',

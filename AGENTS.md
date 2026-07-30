@@ -337,6 +337,11 @@ evening while the sides change every match.
 Nothing appears until somebody has played once and been remembered, so a
 first-ever match is still two typed names.
 
+Removing a name only takes it out of the picker. Their matches and their row in
+the players table stay — those happened, and a one-off guest should not erase
+them by leaving. The confirmation says so, because "remove" otherwise reads like
+"delete everything about this person".
+
 ## The app suggests the next pairing. It never owns the schedule.
 
 There is no Americano *mode* to enter and be stuck inside. The user was explicit
