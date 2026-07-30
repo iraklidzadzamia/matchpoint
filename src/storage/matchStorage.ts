@@ -7,6 +7,8 @@ const APP_SETTINGS_KEY = '@matchpoint_app_settings';
 const UNDO_KEY = '@matchpoint_undo_stack';
 const HISTORY_KEY = '@matchpoint_history';
 const LAST_PLAYERS_KEY = '@matchpoint_last_players';
+const ROSTER_KEY = '@matchpoint_roster';
+const PRESENT_KEY = '@matchpoint_present';
 
 // Each record is well under a kilobyte, so even a few thousand matches stay
 // small enough for AsyncStorage; the cap just keeps the list bounded.
@@ -125,6 +127,68 @@ export async function loadLastPlayers(): Promise<LastPlayers | null> {
   } catch (err) {
     console.warn('Load players error:', err);
     return null;
+  }
+}
+
+/**
+ * Everyone who has ever played, so a name is tapped rather than typed. This is a
+ * group of friends, not a club: the list stays short enough to show at once, and
+ * nobody is ever removed — a friend who stops coming still played those matches.
+ */
+export async function loadRoster(): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(ROSTER_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as string[];
+  } catch (err) {
+    console.warn('Load roster error:', err);
+    return [];
+  }
+}
+
+/** Adds any names not already known, matching case-insensitively so "nika" does
+ * not become a second Nika. The spelling already in the roster wins. */
+export async function addToRoster(names: string[]): Promise<string[]> {
+  try {
+    const roster = await loadRoster();
+    const seen = new Set(roster.map((n) => n.toLowerCase()));
+    for (const raw of names) {
+      const name = raw.trim();
+      if (!name || seen.has(name.toLowerCase())) continue;
+      roster.push(name);
+      seen.add(name.toLowerCase());
+    }
+    await AsyncStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
+    return roster;
+  } catch (err) {
+    console.warn('Add to roster error:', err);
+    return loadRoster();
+  }
+}
+
+/**
+ * Who turned up today. Stored with the time so it expires on its own: come back
+ * tomorrow, or after a long enough break, and the app asks again rather than
+ * assuming last week's six are standing on the court.
+ */
+export async function savePresent(names: string[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PRESENT_KEY, JSON.stringify({ names, at: Date.now() }));
+  } catch (err) {
+    console.warn('Save present error:', err);
+  }
+}
+
+export async function loadPresent(maxAgeSec: number): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(PRESENT_KEY);
+    if (!raw) return [];
+    const saved = JSON.parse(raw) as { names: string[]; at: number };
+    if (Date.now() - saved.at > maxAgeSec * 1000) return [];
+    return saved.names;
+  } catch (err) {
+    console.warn('Load present error:', err);
+    return [];
   }
 }
 

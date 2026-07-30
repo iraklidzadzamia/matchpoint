@@ -8,14 +8,24 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Sport, MatchConfig, PlayerSide, MatchFormat } from '../engine/types';
+import { Sport, MatchConfig, PlayerSide, MatchFormat, MatchRecord } from '../engine/types';
+import { groupIntoSessions, DEFAULT_SESSION_GAP_SEC } from '../engine/sessions';
+import { suggestNextMatch, sittingOut } from '../engine/nextMatch';
 import { NameInput } from '../components/NameInput';
 import { SideSelector } from '../components/SideSelector';
 import { Segmented } from '../components/Segmented';
 import { SwipeBackView } from '../components/SwipeBackView';
 import { theme } from '../styles/theme';
 import { usePortraitOrientation } from '../hooks/useOrientation';
-import { loadLastPlayers, saveLastPlayers } from '../storage/matchStorage';
+import {
+  loadLastPlayers,
+  saveLastPlayers,
+  loadRoster,
+  addToRoster,
+  loadPresent,
+  savePresent,
+  loadHistory,
+} from '../storage/matchStorage';
 import { t } from '../i18n';
 
 interface MatchSetupScreenProps {
@@ -56,6 +66,72 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
   }, []);
 
   const [servingFirst, setServingFirst] = useState<PlayerSide>('side1');
+
+  // Everyone the app has seen, who of them turned up today, and what today has
+  // already played — enough to tap a name instead of typing it and to notice who
+  // has been sitting down all evening.
+  const [roster, setRoster] = useState<string[]>([]);
+  const [present, setPresent] = useState<string[]>([]);
+  const [sessionMatches, setSessionMatches] = useState<MatchRecord[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      const [names, here, history] = await Promise.all([
+        loadRoster(),
+        loadPresent(DEFAULT_SESSION_GAP_SEC),
+        loadHistory(),
+      ]);
+      setRoster(names);
+      setPresent(here);
+      // Only today's outing matters for who has waited longest.
+      setSessionMatches(groupIntoSessions(history)[0]?.matches ?? []);
+    }
+    load();
+  }, []);
+
+  const slots: Array<[string, (v: string) => void]> = isSingles
+    ? [[side1P1, setSide1P1], [side2P1, setSide2P1]]
+    : [
+        [side1P1, setSide1P1],
+        [side1P2, setSide1P2],
+        [side2P1, setSide2P1],
+        [side2P2, setSide2P2],
+      ];
+
+  const assigned = slots.map(([value]) => value.trim()).filter(Boolean);
+
+  const togglePresent = (name: string) => {
+    const next = present.includes(name)
+      ? present.filter((n) => n !== name)
+      : [...present, name];
+    setPresent(next);
+    savePresent(next);
+  };
+
+  /** Drops a tapped name into the first empty slot, or clears it if already in one. */
+  const assign = (name: string) => {
+    const existing = slots.find(([value]) => value.trim() === name);
+    if (existing) {
+      existing[1]('');
+      return;
+    }
+    const empty = slots.find(([value]) => value.trim() === '');
+    if (empty) empty[1](name);
+  };
+
+  const applySuggestion = () => {
+    const suggestion = suggestNextMatch(
+      sessionMatches,
+      present,
+      isSingles ? 'singles' : 'doubles'
+    );
+    if (!suggestion) return;
+    const names = [...suggestion.side1, ...suggestion.side2];
+    slots.forEach(([, set], i) => set(names[i] ?? ''));
+  };
+
+  const waiting = sittingOut(sessionMatches, present);
+  const [editingPresent, setEditingPresent] = useState(false);
 
   const handleSwapSidesInput = () => {
     setSide1P1(side2P1);
@@ -103,6 +179,11 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
       side1: [resolvedNames.s1p1, resolvedNames.s1p2],
       side2: [resolvedNames.s2p1, resolvedNames.s2p2],
     });
+
+    // Anyone who played is somebody to tap next time, and is obviously here.
+    const played = Object.values(resolvedNames).filter(Boolean);
+    addToRoster(played);
+    savePresent([...new Set([...present, ...played])]);
     onStartMatch(config);
   };
 
@@ -152,8 +233,71 @@ export const MatchSetupScreen: React.FC<MatchSetupScreenProps> = ({
           onChange={(v) => setIsSingles(v === 'singles')}
         />
 
-        {/* Player names, one side per full-width card */}
+        {/* One row of names, not two. Tapping a name puts it on court; who turned
+            up at all is edited behind a button, because it changes once an evening
+            while the sides change every match. */}
         <Text style={styles.sectionLabel}>{t('ui.players')}</Text>
+
+        {roster.length > 0 && (
+          <View style={styles.assignRow}>
+            <View style={styles.chipRow}>
+              {(editingPresent ? roster : present).map((name) => {
+                const inMatch = assigned.includes(name);
+                const here = present.includes(name);
+                const active = editingPresent ? here : inMatch;
+                return (
+                  <TouchableOpacity
+                    key={name}
+                    style={[styles.chip, active && styles.chipActive]}
+                    onPress={() => (editingPresent ? togglePresent(name) : assign(name))}
+                    activeOpacity={0.7}
+                  >
+                    {!editingPresent && !inMatch && (
+                      <Ionicons name="add" size={14} color={theme.colors.text.secondary} />
+                    )}
+                    {editingPresent && here && (
+                      <Ionicons name="checkmark" size={14} color={theme.colors.accent.primary} />
+                    )}
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.chipRow}>
+              <TouchableOpacity
+                style={styles.plainBtn}
+                onPress={() => setEditingPresent(!editingPresent)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={editingPresent ? 'checkmark' : 'people-outline'}
+                  size={16}
+                  color={theme.colors.text.secondary}
+                />
+                <Text style={styles.plainBtnText}>
+                  {editingPresent ? t('ui.done') : t('ui.whoIsHere')}
+                </Text>
+              </TouchableOpacity>
+
+              {!editingPresent && present.length >= (isSingles ? 2 : 4) && (
+                <TouchableOpacity style={styles.suggestBtn} onPress={applySuggestion} activeOpacity={0.7}>
+                  <Ionicons name="shuffle" size={16} color={theme.colors.accent.primary} />
+                  <Text style={styles.suggestText}>{t('ui.suggest')}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {!editingPresent && waiting.length > 0 && present.length > (isSingles ? 2 : 4) && (
+              <Text style={styles.waitingNote}>
+                {t('ui.notPlayedYet', { names: waiting.join(', ') })}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {roster.length === 0 && <Text style={styles.sectionLabel}>{t('ui.players')}</Text>}
+
         <View style={styles.sideCard}>
           <View style={styles.sideHeaderRow}>
             <View style={[styles.sideDot, { backgroundColor: theme.colors.side1.base }]} />
@@ -244,6 +388,74 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.sm,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.glass.border,
+    backgroundColor: theme.colors.bg.surface,
+  },
+  chipActive: {
+    borderColor: theme.colors.accent.primary,
+    backgroundColor: theme.colors.accent.primaryGlow,
+  },
+  chipText: {
+    color: theme.colors.text.secondary,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: theme.colors.accent.primary,
+  },
+  plainBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.glass.border,
+  },
+  plainBtnText: {
+    color: theme.colors.text.secondary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  waitingNote: {
+    color: theme.colors.text.muted,
+    fontSize: 13,
+    marginTop: 8,
+  },
+  assignRow: {
+    gap: 10,
+    marginBottom: theme.spacing.xs,
+  },
+  suggestBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.accent.primary,
+  },
+  suggestText: {
+    color: theme.colors.accent.primary,
+    fontSize: 14,
+    fontWeight: '700',
   },
   sideCard: {
     backgroundColor: theme.colors.bg.surface,

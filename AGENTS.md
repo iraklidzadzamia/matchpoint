@@ -318,6 +318,25 @@ not check those. Do not chase them.
 Verified on the build of 29 July 2026: encryption `false`, device family `[1]`,
 marketing icon opaque.
 
+## Names are tapped, not typed
+
+`loadRoster` keeps everyone who has ever played, and `savePresent` records who
+turned up today. Presence is stored **with a timestamp and expires** after the
+session gap, so coming back tomorrow asks again rather than assuming last week's
+six are standing on the court.
+
+Roster matching is case-insensitive on the way in: typing "nika" does not create
+a second Nika. The spelling already stored wins.
+
+The setup screen shows **one row of names**, not two. An earlier attempt had a
+"who is here" row and a separate "tap to add" row, which meant the same six
+names appeared twice and ate the screen. Tapping a name puts it on court;
+editing who turned up at all sits behind a button, because that changes once an
+evening while the sides change every match.
+
+Nothing appears until somebody has played once and been remembered, so a
+first-ever match is still two typed names.
+
 ## The app suggests the next pairing. It never owns the schedule.
 
 There is no Americano *mode* to enter and be stuck inside. The user was explicit
