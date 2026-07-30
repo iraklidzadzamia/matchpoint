@@ -22,7 +22,7 @@ export function useHosting(state: MatchState | null, hosting: boolean) {
     if (!hosting || !state || !MultipeerTransport.available) return;
 
     const transport = new MultipeerTransport();
-    const created = new MatchLink(transport, 'scoreboard');
+    const created = new MatchLink(transport, 'host');
     link.current = created;
 
     const stopWatching = transport.onConnection?.(setConnection);

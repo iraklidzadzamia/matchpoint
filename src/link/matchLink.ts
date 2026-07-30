@@ -1,6 +1,6 @@
 import { MatchState, PlayerSide } from '../engine/types';
 import { addPoint } from '../engine/scoring';
-import { Message, PeerInfo, Role, Transport, matchCode } from './protocol';
+import { Message, Ownership, PeerInfo, Transport, matchCode } from './protocol';
 
 /**
  * Keeps several devices looking at the same match.
@@ -30,7 +30,7 @@ export class MatchLink {
 
   constructor(
     private transport: Transport,
-    public readonly role: Role
+    public readonly ownership: Ownership
   ) {
     this.stopListening = transport.onMessage((message) => this.receive(message));
 
@@ -40,7 +40,7 @@ export class MatchLink {
     this.stopWatchingConnection =
       transport.onConnection?.((state) => {
         if (state !== 'connected') return;
-        if (this.role === 'scoreboard') {
+        if (this.ownership === 'host') {
           // Somebody just joined: send them the match without being asked.
           void this.publish();
         } else {
@@ -93,7 +93,7 @@ export class MatchLink {
    * state message.
    */
   async score(winner: PlayerSide, at: number = Date.now()): Promise<void> {
-    if (this.role !== 'scoreboard') {
+    if (this.ownership !== 'host') {
       await this.transport.send({ kind: 'point', winner });
       return;
     }
@@ -106,7 +106,7 @@ export class MatchLink {
   /** Replaces the state after an undo, or any other change made locally. */
   async publish(state?: MatchState): Promise<void> {
     if (state) this.state = state;
-    if (this.role !== 'scoreboard' || !this.state) return;
+    if (this.ownership !== 'host' || !this.state) return;
     await this.transport.send({ kind: 'state', state: this.state, sentAt: Date.now() });
   }
 
@@ -133,14 +133,14 @@ export class MatchLink {
       case 'point':
         // A request from another device. Ignored unless this one owns the match,
         // which stops two scoreboards from scoring each other's matches.
-        if (this.role === 'scoreboard') void this.score(message.winner);
+        if (this.ownership === 'host') void this.score(message.winner);
         return;
 
       case 'undo':
         return;
 
       case 'clock':
-        if (this.role === 'scoreboard') {
+        if (this.ownership === 'host') {
           void this.transport.send({ kind: 'clock', sentAt: Date.now() });
           void this.publish();
         } else {

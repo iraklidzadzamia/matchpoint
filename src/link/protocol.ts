@@ -8,7 +8,14 @@ import { MatchState, PlayerSide } from '../engine/types';
  * file is written once.
  */
 
-export type Role = 'scoreboard' | 'display' | 'camera';
+/**
+ * Who owns the match. Exactly one host; everybody else a guest.
+ *
+ * Deliberately not a list of jobs. A phone on the fence can show the score and
+ * film at the same time, so "what this device does" belongs to the app, where it
+ * combines freely — a camera is simply a guest that happens to be recording.
+ */
+export type Ownership = 'host' | 'guest';
 
 /** Four messages, and that is the whole vocabulary. */
 export type Message =

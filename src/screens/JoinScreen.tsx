@@ -36,7 +36,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({ onBack }) => {
   useEffect(() => {
     if (!MultipeerTransport.available) return;
 
-    const created = new MatchLink(new MultipeerTransport(), 'display');
+    const created = new MatchLink(new MultipeerTransport(), 'guest');
     created.onPeers = setPeers;
     created.onState = setJoined;
     created.browse();
