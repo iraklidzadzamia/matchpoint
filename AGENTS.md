@@ -318,6 +318,22 @@ not check those. Do not chase them.
 Verified on the build of 29 July 2026: encryption `false`, device family `[1]`,
 marketing icon opaque.
 
+## An evening on its own
+
+Tapping a session header in history opens that outing: the same table as the
+all-time one, fed only that evening's matches. No new counting — `computeGroupStats`
+takes any list of records, so the difference between "ever" and "tonight" is
+which records go in.
+
+That is the part of Americano that needs no engine work, and it is most of what a
+group actually wants: who played, how many each, and how the evening went.
+
+What is still missing for real Americano is a **points-based round** — first to
+16, 21 or 24, no games and no sets. The engine is built around games and sets and
+`gamesPerSet` does not reach it: it needs a `scoringMode` and its own display,
+because the score screen shows 0/15/30/40 and the announcements say "thirty,
+fifteen".
+
 ## Names are tapped, not typed
 
 `loadRoster` keeps everyone who has ever played, and `savePresent` records who

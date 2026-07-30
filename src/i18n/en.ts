@@ -31,6 +31,7 @@ export const en = {
     yesterday: 'Yesterday',
     sessionOneMatch: '1 match',
     sessionMatches: '{count} matches',
+    sessionMatchList: 'Matches',
     players: 'Players',
     whoIsHere: 'Who is here',
     notPlayedYet: 'Not played yet: {names}',
