@@ -918,11 +918,103 @@ The failure to design against: the tap arrives, the host scores it, the receipt
 is lost, the watch retries. Now the match has a point nobody played, and it is
 almost impossible to reconstruct afterwards.
 
-A command therefore carries an **id**, the **match it belongs to**, and the
-**revision it expects**. The host keeps a short log of ids it has already
-handled, checks all three before entering the funnel, and answers a duplicate
-with the same receipt as the original. Review also proposed a separate authority
-epoch; the match id already changes with the match and covers it.
+A command therefore carries an **id**, the **match it belongs to**, the
+**revision it expects**, and an **authority epoch**. The host keeps a short log of
+ids it has already handled, checks them before entering the funnel, and answers a
+duplicate with the same receipt as the original.
+
+The epoch was very nearly dropped on the reasoning that a match id already
+changes with the match. **That reasoning was wrong**, and the counter-example is
+in this codebase: `revision` is an in-memory field of `MatchLink` starting at
+zero, and `useHosting` builds a new `MatchLink` every time sharing is toggled. So
+one match — same start time, same id — can restart its revision sequence without
+the app going anywhere. A pending command expecting revision 5 would then match a
+revision 5 that means something entirely different.
+
+The epoch is remote-session metadata, not match state, and it changes whenever the
+session is re-armed or recovered. That makes every command from before the
+restart plainly inapplicable, without persisting a monotonic revision and an id
+journal across restarts.
+
+Related, and worth doing when convenient: a match is identified by its start
+time, which is a fine practical key and not a real one. Mint a proper `matchId`
+at creation, the same way points now get an id.
+
+### One way in, three kinds of remote
+
+A watch, a Flic and a keyboard-shaped button are not variants of one device, and
+the difference reaches back into the protocol: the first can mint an id, retry
+and be told the outcome; the last can do none of those. **The seam is one
+vocabulary, not one transport, and input is separated from feedback.**
+
+```ts
+type RemoteIntent =
+  | { kind: 'leaderPoint';   source: Source; id?: string; expectedRevision?: number }
+  | { kind: 'opponentPoint'; source: Source; id?: string; expectedRevision?: number }
+  | { kind: 'undo';          source: Source; id?: string; expectedRevision?: number };
+
+interface RemoteInput    { start(onIntent: (i: RemoteIntent) => void): () => void }
+interface RemoteFeedback { deliver(receipt: RemoteReceipt): void }
+```
+
+A watch implements both ports. A button implements only the first — and the
+optional `id` and `expectedRevision` are optional precisely because of that.
+
+Above them sits **one gate**, and everything goes through it: it feeds
+`handleAddPoint` / `handleUndo` in order, checks ids and revisions where they
+exist, keeps the processed-id log for the watch, debounces and drops autorepeat
+for a button, and always produces confirmation on the phone — sound, speech, a
+toast — because that is the only feedback a screenless remote can ever get.
+
+**Reliability is a property of the adapter, not of the funnel.** A watch gets
+at-most-once across a network. A button gets "one key event that arrived is one
+action in this process", which is a weaker promise, and pretending otherwise
+would be the same kind of lie as a heartbeat that proves the wrong thing. The
+funnel tolerates both; neither guarantee leaks into the other.
+
+**The gate must serialise local taps too**, not only remote ones. `handleAddPoint`
+reads `matchState` out of a closure and writes back a state derived from it; two
+calls arriving before a re-render both read the same value and the second
+overwrites the first, losing a point and pushing the same state onto the undo
+stack twice. Two fingers on a phone rarely manage it. A remote firing
+asynchronously into the same funnel will.
+
+Five things the watch build must not do, because each is expensive to unpick:
+
+- bake WatchConnectivity into the domain `RemoteIntent`;
+- require every remote to carry an id, a revision and a reply;
+- bind the remote permanently to a player — who is leading, and for which side,
+  is host state and has to be changeable mid-match;
+- bypass the gate or `handleAddPoint`;
+- treat `isReachable` as permission to score. It describes a channel, not a
+  match.
+
+### The setup screen says which step you are stuck on
+
+A competitor shows three lines — paired, app installed, reachable — and being
+specific about the failing step is right. Two changes to it:
+
+**`Reachable` is not a setup check.** It means the counterpart is running and
+available for live messaging *this second*, and can be false a moment later.
+Showing it as a permanent tick teaches the user to distrust the screen. Show it
+as a live indicator.
+
+**A fourth line matters more than the first three**, because it answers the
+question they do not: *can I press the thing now?*
+
+```
+Watch paired                       ✓
+MatchPoint installed on the watch  ✓
+Live channel available             ● (live, not a tick)
+Remote ready — Nika, side 1        ✓
+```
+
+The last turns green only after a handshake agrees on protocol version, match,
+epoch, current revision and who is leading which side.
+
+`isPaired` and `isWatchAppInstalled` are only readable once the session has
+activated. Before that the screen says *checking*, not a red cross — a wrong
+red cross sends people off reinstalling things that were never broken.
 
 ### Keeping the watch awake for a whole match
 
@@ -935,11 +1027,28 @@ costs a HealthKit permission and writes a real workout to Health. That is
 defensible here — a padel match *is* exercise — but it must be presented as
 recording a workout, not as a keep-alive trick.
 
-There is a third answer that needs no code at all, and a competitor ships it:
-watchOS has a per-app **Return to Clock** setting, and telling the user to set it
-to an hour keeps the app in front for a whole match. Cheap, honest, and it makes
-the workout session optional rather than load-bearing. Whatever else is built,
-the setup screen should say this.
+**The answer for the first version needs no code at all.** watchOS has a per-app
+**Return to Clock** setting; set to an hour it keeps the app frontmost, which is
+what actually matters — frontmost is a real state, not merely what is drawn.
+
+It is not an unconditional ninety minutes. Pressing the Digital Crown or covering
+the screen backgrounds the app at once, and an hour of genuine inactivity ends
+it. But a match is not inactive for an hour, and interacting with a control
+returns the app to active. Apple does not promise that every action restarts the
+hour, so **measure it on a real watch before release** — how long `isReachable`
+actually stays true across a full match, wrist-down included.
+
+So: v1 ships without `HKWorkoutSession`, and the setup screen asks the user to
+set Return to Clock. Keep the workout session as what it honestly is — an
+optional way to have the match land in the Fitness rings — and never as a
+disguised keep-alive.
+
+Two more instructions that beat writing code, and belong in setup:
+
+- *Open MatchPoint on the watch before the match.*
+- *After restarting the iPhone, unlock it once.* WatchConnectivity says exactly
+  this through `iOSDeviceNeedsUnlockAfterRebootForReachability`, so the app can
+  name the real reason instead of showing a generic failure.
 
 Beyond the watch: the host phone cannot be assumed reachable while locked. For a
 first version, require the match screen to be up with keep-awake on — which
@@ -970,13 +1079,26 @@ A competitor offers three, and does not put the watch first: a **Flic button** (
 BLE puck, marked "recommended"), **Apple Watch**, and a **cheap BLE shutter
 remote** sold for selfies, marked as the budget option.
 
-That ordering is worth taking seriously rather than dismissing. A BLE button has
-no target to build, no prebuild problem, no signing, no watch screenshots, no
-battery session and no App Store review surface — and it clips to a racket
-handle or a net post, where a watch cannot go. Its cost is that it has one or two
-buttons and no screen, so it cannot show what was registered or who is leading.
+A BLE button has no target to build, no prebuild problem, no signing, no watch
+screenshots, no battery session and no App Store review surface — and it clips to
+a racket handle or a net post, where a watch cannot go. Its cost is that it has
+no screen, so it cannot show what was registered or who is leading.
 
-The watch remains the better remote. It is not obviously the one to build first.
+**The watch is being built first anyway**, decided. What matters is that it does
+not make the others expensive to add — see the seam below.
+
+**Flic is a real candidate.** It has a UUID and ready-made single, double and
+hold events, so it is not a dumb button. But its own documentation admits events
+can be lost on a disconnect: better identity, not a reliable command channel.
+
+**The cheap shutter remote should not be promised as a product.** Most of that
+class present as a Bluetooth keyboard driving the *system* volume route. UIKit
+does know `keyboardVolumeUp`, so a specific accessory declaring itself a keyboard
+might be readable — but the press would also change the volume, and App Review
+2.5.9 forbids altering or suppressing standard volume behaviour. If some
+particular model turns out to send an ordinary key rather than the system one,
+that is worth a spike on a real phone; it is not worth designing a feature around
+in advance.
 
 ### Ship the phone app before either
 
