@@ -1,8 +1,8 @@
 import { MatchLink } from '../matchLink';
 import { LoopbackNetwork, LoopbackTransport } from '../loopbackTransport';
 import { matchCode, PeerInfo } from '../protocol';
-import { createMatch, getDisplayScore } from '../../engine/scoring';
-import { MatchConfig } from '../../engine/types';
+import { addPoint, createMatch, getDisplayScore } from '../../engine/scoring';
+import { MatchConfig, PlayerSide } from '../../engine/types';
 
 const config: MatchConfig = {
   sport: 'padel',
@@ -39,6 +39,19 @@ afterEach(async () => {
   await Promise.all(opened.splice(0).map((created) => created.leave()));
 });
 
+/**
+ * Plays the part the app's funnel plays on the scoreboard: run the engine once,
+ * then publish the result.
+ *
+ * Spelled out in the tests rather than hidden inside `MatchLink` because keeping
+ * it out of the link is the entire point. A point applied inside the link would
+ * skip saving the match, the undo stack, the history, the sound and the rally
+ * recorder — the score would move and nothing else would happen.
+ */
+async function scorePoint(host: MatchLink, winner: PlayerSide, at: number) {
+  await host.publish(addPoint(host.current!, winner, at));
+}
+
 /** A scoreboard and a second device on one network, not yet connected. */
 function pair() {
   const network = new LoopbackNetwork();
@@ -58,8 +71,8 @@ describe('a second screen', () => {
 
     const match = createMatch(config);
     await scoreboard.host(match, 'Irakli & Nika vs Rafael & Juan');
-    await scoreboard.score('side1', 1);
-    await scoreboard.score('side1', 2);
+    await scorePoint(scoreboard, 'side1', 1);
+    await scorePoint(scoreboard, 'side1', 2);
 
     // Nothing has reached the second phone yet — it is not connected.
     expect(shown).toBe('0-0');
@@ -73,24 +86,42 @@ describe('a second screen', () => {
     await scoreboard.host(createMatch(config), 'A vs B');
     await display.join('phone-a');
 
-    await scoreboard.score('side2', 1);
+    await scorePoint(scoreboard, 'side2', 1);
     expect(getDisplayScore(display.current!)).toEqual({ side1Score: '0', side2Score: '15' });
 
-    await scoreboard.score('side2', 2);
-    await scoreboard.score('side2', 3);
-    await scoreboard.score('side2', 4);
+    await scorePoint(scoreboard, 'side2', 2);
+    await scorePoint(scoreboard, 'side2', 3);
+    await scorePoint(scoreboard, 'side2', 4);
     // A whole game to side 2.
     expect(display.current!.games).toEqual([0, 1]);
   });
 
-  test('can score, and the scoreboard is the one that decides', async () => {
+  // The link's job is to carry the request, and to stop there. Scoring it here
+  // would bypass the app entirely: no saved match, no undo, no history, no
+  // sound, no clip. The score would move and nothing else would happen.
+  test('a request from a second screen is handed up, not acted on', async () => {
     const { scoreboard, display } = pair();
+    const asked: PlayerSide[] = [];
+    scoreboard.onPointRequest = (winner) => asked.push(winner);
+
     await scoreboard.host(createMatch(config), 'A vs B');
     await display.join('phone-a');
 
     await display.score('side1');
 
-    // The point was applied once, by the scoreboard, and both agree.
+    expect(asked).toEqual(['side1']);
+    expect(scoreboard.current!.points).toEqual([0, 0]);
+  });
+
+  test('and once the app does score it, both agree', async () => {
+    const { scoreboard, display } = pair();
+    scoreboard.onPointRequest = (winner) => void scorePoint(scoreboard, winner, 1);
+
+    await scoreboard.host(createMatch(config), 'A vs B');
+    await display.join('phone-a');
+
+    await display.score('side1');
+
     expect(scoreboard.current!.points).toEqual([1, 0]);
     expect(display.current!.points).toEqual([1, 0]);
   });
@@ -112,7 +143,7 @@ describe('a second screen', () => {
     const { scoreboard, display } = pair();
     await scoreboard.host(createMatch(config), 'A vs B');
     await display.join('phone-a');
-    await scoreboard.score('side1', 1);
+    await scorePoint(scoreboard, 'side1', 1);
 
     expect(display.current).not.toBe(scoreboard.current);
     display.current!.points[0] = 99;
@@ -187,9 +218,9 @@ describe('choosing which phone', () => {
     await other.host(createMatch(config), 'Somebody else');
 
     await joiner.join('wanted');
-    await wanted.score('side1', 1);
-    await other.score('side2', 1);
-    await other.score('side2', 2);
+    await scorePoint(wanted, 'side1', 1);
+    await scorePoint(other, 'side2', 1);
+    await scorePoint(other, 'side2', 2);
 
     // Only the chosen scoreboard's points arrived.
     expect(joiner.current!.points).toEqual([1, 0]);
@@ -271,7 +302,7 @@ describe('a mirror listening for the scoreboard', () => {
       // From here the score gets through to nobody, but the scoreboard is alive
       // and saying so on schedule.
       network.dropIf = (message) => message.kind === 'state';
-      await scoreboard.score('side1', 1);
+      await scorePoint(scoreboard, 'side1', 1);
 
       jest.advanceTimersByTime(10_000);
 
@@ -294,7 +325,7 @@ describe('a mirror listening for the scoreboard', () => {
       await display.join('phone-a');
 
       network.dropIf = (message) => message.kind === 'state';
-      await scoreboard.score('side1', 1);
+      await scorePoint(scoreboard, 'side1', 1);
       jest.advanceTimersByTime(10_000);
       expect(told).toEqual([false]);
 

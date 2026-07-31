@@ -1,5 +1,4 @@
 import { MatchState, PlayerSide } from '../engine/types';
-import { addPoint } from '../engine/scoring';
 import { Message, Ownership, PeerInfo, Transport, matchCode } from './protocol';
 
 /** How often the scoreboard says it is still there. */
@@ -60,6 +59,20 @@ export class MatchLink {
    * not to be believed either.
    */
   onTrust: ((trusted: boolean) => void) | null = null;
+  /**
+   * Called on the scoreboard when somebody asks for a point — from another
+   * device, or from this one.
+   *
+   * **This class must never run the engine itself.** It used to, and that was a
+   * trap waiting for the first remote scorer: a point applied here would bypass
+   * the app's funnel, and with it saving the match, the undo stack, the history,
+   * the sound, and the rally recorder. The score would move and nothing else
+   * would happen, which is the kind of bug that takes an evening to believe.
+   *
+   * So the link asks and the app decides. Wiring this to the funnel is required
+   * before any device other than the scoreboard can score.
+   */
+  onPointRequest: ((winner: PlayerSide) => void) | null = null;
 
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private listening: ReturnType<typeof setInterval> | null = null;
@@ -152,19 +165,19 @@ export class MatchLink {
   }
 
   /**
-   * Scores a point. On the scoreboard this runs the engine and sends the result;
-   * anywhere else it asks the scoreboard to do it, and the answer arrives as a
-   * state message.
+   * Asks for a point to be scored. Never scores one.
+   *
+   * On a guest this goes down the wire; on the scoreboard it is handed to
+   * `onPointRequest`. Either way the answer comes back as a state message, and
+   * the engine is run in exactly one place — see the note on `onPointRequest`
+   * for why that matters more than the small detour costs.
    */
-  async score(winner: PlayerSide, at: number = Date.now()): Promise<void> {
-    if (this.ownership !== 'host') {
-      await this.transport.send({ kind: 'point', winner });
+  async score(winner: PlayerSide): Promise<void> {
+    if (this.ownership === 'host') {
+      this.onPointRequest?.(winner);
       return;
     }
-    if (!this.state) return;
-    const next = addPoint(this.state, winner, at);
-    this.onState?.(next);
-    await this.publish(next);
+    await this.transport.send({ kind: 'point', winner });
   }
 
   /**
@@ -241,8 +254,9 @@ export class MatchLink {
 
       case 'point':
         // A request from another device. Ignored unless this one owns the match,
-        // which stops two scoreboards from scoring each other's matches.
-        if (this.ownership === 'host') void this.score(message.winner);
+        // which stops two scoreboards from scoring each other's matches. Handed
+        // up rather than applied here: the engine runs in one place only.
+        if (this.ownership === 'host') this.onPointRequest?.(message.winner);
         return;
 
       case 'undo':
