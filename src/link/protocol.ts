@@ -17,10 +17,16 @@ import { MatchState, PlayerSide } from '../engine/types';
  */
 export type Ownership = 'host' | 'guest';
 
-/** Four messages, and that is the whole vocabulary. */
+/** The vocabulary, and nothing outside it. */
 export type Message =
-  /** The whole match. Sent on joining and after anything that changes it. */
-  | { kind: 'state'; state: MatchState; sentAt: number }
+  /**
+   * The whole match. Sent on joining and after anything that changes it.
+   *
+   * `revision` counts authoritative changes on the scoreboard, and is what lets
+   * a mirror tell "nothing has happened" apart from "something happened and I
+   * never got it" — see the note on `alive`.
+   */
+  | { kind: 'state'; state: MatchState; revision: number; sentAt: number }
   /** A request to score, from a device that is not holding the truth. */
   | { kind: 'point'; winner: PlayerSide }
   | { kind: 'undo' }
@@ -31,15 +37,32 @@ export type Message =
    */
   | { kind: 'clock'; sentAt: number }
   /**
-   * The scoreboard saying it is still there, on a timer.
+   * The scoreboard saying it is still there, on a timer, along with the revision
+   * it believes everyone should be showing.
    *
    * Needed because a connection can stay open long after the far end is gone —
    * the transport only notices when its own timeout expires, which is far too
    * late for a screen the court is reading. Silence is the signal here, so this
    * has to arrive on a schedule rather than only when something happens: points
    * can be minutes apart, and those minutes must not look like a fault.
+   *
+   * **Carrying the revision is what stops this message from lying.** Arriving
+   * proves the scoreboard is alive. It does not prove the mirror is showing what
+   * the scoreboard is showing, and those are different claims. A `state` message
+   * can be lost — and this app deliberately drops anything that will not parse,
+   * which in a version mismatch discards exactly the large messages while the
+   * small ones keep arriving perfectly. Without a revision the mirror would then
+   * hold a stale score under a healthy banner, which is the precise failure the
+   * heartbeat was added to prevent, arriving through a different door.
    */
-  | { kind: 'alive'; sentAt: number };
+  | { kind: 'alive'; revision: number; sentAt: number }
+  /**
+   * A mirror saying it is behind and wants the whole match again. The scoreboard
+   * answers with `state`. There is nothing to negotiate and no partial update:
+   * the state is small enough to resend and reasoning about deltas would be a
+   * second way to be wrong.
+   */
+  | { kind: 'syncRequest' };
 
 /** A device seen nearby, as it should be shown to somebody choosing one. */
 export interface PeerInfo {

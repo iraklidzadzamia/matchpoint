@@ -17,6 +17,17 @@ interface Advert {
 }
 
 export class LoopbackNetwork {
+  /**
+   * Swallows any message this returns true for.
+   *
+   * The loopback is otherwise perfect, which is a poor model of a radio: a whole
+   * class of failures exists only because a message can go missing, and the
+   * nastiest of them is losing a large message while the small ones keep
+   * arriving. Without a way to drop one, those bugs cannot be written down as
+   * tests.
+   */
+  dropIf: ((message: Message, from: string) => boolean) | null = null;
+
   private adverts = new Map<string, Advert>();
   private watchers = new Set<(peers: PeerInfo[]) => void>();
   private inboxes = new Map<string, (message: Message, from: string) => void>();
@@ -62,6 +73,7 @@ export class LoopbackNetwork {
   send(from: string, message: Message) {
     const to = this.links.get(from);
     if (!to) return;
+    if (this.dropIf?.(message, from)) return;
     // Structured-cloned, like anything crossing a real wire, so a receiver
     // cannot end up holding the sender's own object.
     this.inboxes.get(to)?.(JSON.parse(JSON.stringify(message)), from);

@@ -34,8 +34,8 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({ maxBrightness, onBack })
   const [joining, setJoining] = useState<string | null>(null);
   const [connection, setConnection] = useState<ConnectionState>('disconnected');
   // Starts true so a mirror does not open with a warning already on it; the
-  // silence timer only starts once there is something to be silent about.
-  const [heard, setHeard] = useState(true);
+  // timers only start once there is something to be silent about.
+  const [trusted, setTrusted] = useState(true);
 
   const link = useRef<MatchLink | null>(null);
 
@@ -46,7 +46,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({ maxBrightness, onBack })
     const created = new MatchLink(transport, 'guest');
     created.onPeers = setPeers;
     created.onState = setJoined;
-    created.onLiveness = setHeard;
+    created.onTrust = setTrusted;
     // Watched here rather than through the link, because what the mirror needs
     // to know is whether the scoreboard is still there — a transport question.
     const stopWatching = transport.onConnection?.(setConnection);
@@ -72,10 +72,11 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({ maxBrightness, onBack })
   };
 
   // A connection the transport still believes in, from a scoreboard that has
-  // gone quiet, is the case this whole screen exists to catch: to a mirror it is
-  // indistinguishable from being gone, so it is reported as gone.
-  const trusted: ConnectionState =
-    connection === 'connected' && !heard ? 'disconnected' : connection;
+  // gone quiet or moved on without us, is the case this whole screen exists to
+  // catch: to somebody reading the mirror both are indistinguishable from the
+  // scoreboard being gone, so both are reported as gone.
+  const shown: ConnectionState =
+    connection === 'connected' && !trusted ? 'disconnected' : connection;
 
   // Once joined this is a scoreboard in its own right, not a page inside the
   // joining flow — so it replaces the screen rather than rendering within it.
@@ -83,7 +84,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({ maxBrightness, onBack })
     return (
       <MirrorScreen
         state={joined}
-        connection={trusted}
+        connection={shown}
         maxBrightness={maxBrightness}
         onLeave={onBack}
       />

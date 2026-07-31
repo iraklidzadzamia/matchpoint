@@ -211,7 +211,7 @@ describe('a mirror listening for the scoreboard', () => {
     try {
       const { scoreboard, display } = pair();
       const told: boolean[] = [];
-      display.onLiveness = (heard) => told.push(heard);
+      display.onTrust = (trusted) => told.push(trusted);
 
       await scoreboard.host(createMatch(config), 'A vs B');
       await display.join('phone-a');
@@ -231,7 +231,7 @@ describe('a mirror listening for the scoreboard', () => {
     try {
       const { scoreboard, display } = pair();
       const told: boolean[] = [];
-      display.onLiveness = (heard) => told.push(heard);
+      display.onTrust = (trusted) => told.push(trusted);
 
       await scoreboard.host(createMatch(config), 'A vs B');
       await display.join('phone-a');
@@ -248,6 +248,63 @@ describe('a mirror listening for the scoreboard', () => {
 
       jest.advanceTimersByTime(6000);
       expect(told).toEqual([false]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  // The failure that hearing alone cannot catch, and the nastier one: every beat
+  // arrives, so the mirror looks healthy, while the message that actually
+  // mattered was lost. The bias is real — the state is large and grows through a
+  // match, the beat is a few bytes, and this app deliberately drops anything it
+  // cannot parse.
+  test('knows it is behind even while the beats keep arriving', async () => {
+    jest.useFakeTimers();
+    try {
+      const { network, scoreboard, display } = pair();
+      const told: boolean[] = [];
+      display.onTrust = (trusted) => told.push(trusted);
+
+      await scoreboard.host(createMatch(config), 'A vs B');
+      await display.join('phone-a');
+
+      // From here the score gets through to nobody, but the scoreboard is alive
+      // and saying so on schedule.
+      network.dropIf = (message) => message.kind === 'state';
+      await scoreboard.score('side1', 1);
+
+      jest.advanceTimersByTime(10_000);
+
+      expect(told).toEqual([false]);
+      // Still being heard the whole time — this is not silence.
+      expect(display.current!.points).toEqual([0, 0]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('catches up by itself once the score can get through again', async () => {
+    jest.useFakeTimers();
+    try {
+      const { network, scoreboard, display } = pair();
+      const told: boolean[] = [];
+      display.onTrust = (trusted) => told.push(trusted);
+
+      await scoreboard.host(createMatch(config), 'A vs B');
+      await display.join('phone-a');
+
+      network.dropIf = (message) => message.kind === 'state';
+      await scoreboard.score('side1', 1);
+      jest.advanceTimersByTime(10_000);
+      expect(told).toEqual([false]);
+
+      // Nothing is retried and nobody is asked to do anything: the next beat
+      // still disagrees, so the mirror asks again and this time gets an answer.
+      network.dropIf = null;
+      jest.advanceTimersByTime(4000);
+
+      expect(told).toEqual([false, true]);
+      expect(display.current!.points).toEqual([1, 0]);
     } finally {
       jest.useRealTimers();
     }
