@@ -323,7 +323,7 @@ marketing icon opaque.
 `src/link/` holds the layer that keeps devices looking at the same match, with
 **no native code in it at all**. Three files:
 
-- `protocol.ts` — the four messages and the `Transport` interface. Knows nothing
+- `protocol.ts` — the message vocabulary and the `Transport` interface. Knows nothing
   about how anything travels, which is the point: phone-to-phone will be
   Multipeer Connectivity, phone-to-watch is WatchConnectivity, and neither
   belongs above this line.
@@ -457,9 +457,15 @@ can only be proven on real hardware.
 
 ### A camera needs the link least
 
-It records continuously. All it needs is the scoreboard's clock once at the
-start and the point times at the end, so a connection dropping mid-match costs
-nothing. Do not design it to depend on a live link.
+It records continuously. All it needs is the scoreboard's clock and the point
+times, so a connection dropping mid-match costs nothing. Do not design it to
+depend on a live link.
+
+The clock is asked for at the start and re-asked every few minutes, which is not
+a contradiction: two crystals drift apart, and over ninety minutes that drift can
+grow past the quarter-second a clip's boundaries are allowed to be out by. The
+probe is two tiny messages and nothing depends on the answer arriving — a camera
+that hears nothing keeps its last offset and keeps filming.
 
 ## Points mode: an Americano round
 
