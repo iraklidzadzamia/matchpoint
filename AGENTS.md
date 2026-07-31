@@ -701,6 +701,81 @@ Records saved before the log existed have no `pointLog` at all. Everything that
 reads it goes through `record.pointLog ?? []` and the detail screen hides its
 statistics rather than showing a confident zero.
 
+### Every device chooses what it is
+
+Scoreboard, camera (front or back), or both at once — per device, chosen by
+whoever owns it. Not a menu of blessed setups. One phone propped where everybody
+can see it can also be the camera; a group with three phones can have a
+scoreboard and two angles; somebody worried about their battery can film with
+nothing else running.
+
+This costs nothing architecturally because the roles were already built to
+combine: ownership is `host` or `guest`, and what a device *does* is the app's
+business, layered on top. Adding a camera is adding a switch, not a fourth
+role — see the note above on why a camera needs the link least.
+
+### Heat is the real constraint, and it is measurable
+
+The conditions this app runs in are the bad ones: an outdoor court, direct sun,
+the screen at full brightness and forbidden to sleep, the radio open, ninety
+minutes. Adding a camera sensor and a continuous encode to that can push a phone
+into thermal throttling, and the first thing iOS takes away is **screen
+brightness** — which kills the scoreboard, the one thing that must not fail.
+
+So do not guess in advance and do not settle it with a scary dialog. iOS reports
+`ProcessInfo.thermalState`, so watch it and act:
+
+- **`serious`** — drop capture quality, keep recording.
+- **`critical`** — stop recording, say so plainly, leave the score alone.
+
+**Video is the thing that gets sacrificed. The score never is.** Record at 720p
+by default: these are twenty-second rally clips, not cinema, and 1080p doubles
+the heat and the storage for something nobody will notice on a phone.
+
+A warning belongs at the moment somebody switches a device into both roles at
+once, in plain language, and nowhere else.
+
+### No gallery — video lives on the points
+
+Do not build a clip gallery. Two reasons, and the second is the one that
+matters:
+
+- A hand-rolled gallery competing with Photos loses. Photos is fast because it
+  never decodes video to draw a list.
+- A clip's whole value is *which point it was*. Loose in a camera roll it is an
+  anonymous twenty seconds among a hundred others; the tie to the score is the
+  product.
+
+Clips therefore appear where their meaning already lives: the **match detail
+screen in history**, on the points themselves. A point with video gets a
+thumbnail and plays in place. Nothing new to navigate, and almost nothing new to
+break.
+
+Grab the thumbnail as a still **when the clip is written**, not when a list asks
+for it — the frames are in hand at that moment, and a list that draws cached
+JPEGs stays fast no matter how many clips exist.
+
+Per clip, offer **Save to Photos** and **Share**. That is how a keeper leaves the
+app and lives forever, without dragging the other hundred and forty with it.
+
+### The camera preview is for aiming, not for watching
+
+iOS does not need a visible preview to record, so a phone doing both jobs shows
+the score full-screen and films unseen. Not drawing a live preview is also the
+cooler option, which is the whole point of the section above.
+
+But a camera nobody can see is a camera nobody can aim. So: show the preview
+while the phone is being set up and pointed, hand the screen back to the score on
+"done", and leave a small mark that recording is live. Checking the framing
+mid-match means going back to the preview for a moment, deliberately.
+
+### Before this ships, the privacy page has to change first
+
+`docs/privacy.html` currently states the app has **no camera or microphone
+permission**, and promises the page will say otherwise before any version that
+does. That promise is load-bearing: update the page, and the App Store privacy
+answers, in the same change that adds the permission — never after.
+
 ### The watch is the remote, not a second screen
 
 **Owner and leader are two different roles.** The owner is the person whose app
