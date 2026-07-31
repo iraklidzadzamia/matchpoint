@@ -86,6 +86,16 @@ export class MatchLink {
    */
   onPointRequest: ((winner: PlayerSide) => void) | null = null;
   /**
+   * Called on the scoreboard when a remote asks to take the last point back.
+   *
+   * Same rule as `onPointRequest`, and the same reason: undo pops the app's
+   * history stack, saves, and speaks. None of that is the link's to do. It also
+   * has to be wired before a watch ships — a third of the watch's vocabulary is
+   * the long press, and until this reaches the funnel that gesture arrives and
+   * disappears.
+   */
+  onUndoRequest: (() => void) | null = null;
+  /**
    * Called when a message could not be sent at all.
    *
    * Nothing has to act on this for the link to be correct — a lost state message
@@ -220,6 +230,15 @@ export class MatchLink {
     this.emit({ kind: 'point', winner });
   }
 
+  /** Asks for the last point to be taken back. Never takes one back. */
+  async requestUndo(): Promise<void> {
+    if (this.ownership === 'host') {
+      this.onUndoRequest?.();
+      return;
+    }
+    this.emit({ kind: 'undo' });
+  }
+
   /**
    * Replaces the state after a point, an undo, or any other local change, and
    * sends it out. Called with no argument it resends what is already held —
@@ -302,6 +321,7 @@ export class MatchLink {
         return;
 
       case 'undo':
+        if (this.ownership === 'host') this.onUndoRequest?.();
         return;
 
       case 'syncRequest':

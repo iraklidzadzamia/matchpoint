@@ -28,10 +28,38 @@ export function useMatch() {
   const [canUndo, setCanUndo] = useState(false);
   const historyRef = useRef<MatchHistoryStack>(new MatchHistoryStack());
 
+  /**
+   * The match as of the last commit, rather than as of the last render.
+   *
+   * Every handler here used to read `matchState` out of its closure, which is a
+   * value from the last time React drew. Two calls arriving before it draws
+   * again both read the same match, and the second overwrites the first: a point
+   * vanishes and the undo stack gets the same state pushed twice. Fingers rarely
+   * manage it. A remote firing asynchronously into the same door will.
+   */
+  const liveRef = useRef<MatchState | null>(null);
+
+  /**
+   * The queue every change goes through, one at a time.
+   *
+   * Reading the committed state is not enough on its own: the work is async, so
+   * two overlapping calls could still interleave between reading and committing.
+   * Chaining them removes the window entirely. A failure does not jam the queue —
+   * the next piece of work runs either way.
+   */
+  const queueRef = useRef<Promise<unknown>>(Promise.resolve());
+
+  function through<T>(work: () => Promise<T>): Promise<T> {
+    const next = queueRef.current.then(work, work);
+    queueRef.current = next.catch(() => undefined);
+    return next;
+  }
+
   useEffect(() => {
     async function init() {
       const loaded = await loadCurrentMatch();
       if (loaded) {
+        liveRef.current = loaded;
         setMatchState(loaded);
         historyRef.current.restore(await loadUndoStack());
         setCanUndo(historyRef.current.canUndo());
@@ -41,72 +69,86 @@ export function useMatch() {
   }, []);
 
   const commit = async (next: MatchState) => {
+    // Before the render, so the next piece of work through the queue sees it.
+    liveRef.current = next;
     setMatchState(next);
     setCanUndo(historyRef.current.canUndo());
     await saveCurrentMatch(next);
     await saveUndoStack(historyRef.current.getAll());
   };
 
-  const handleStartNewMatch = async (config: MatchConfig) => {
-    historyRef.current.clear();
-    await commit(createMatch(config));
-  };
-
-  const handleAddPoint = async (winner: PlayerSide) => {
-    if (!matchState || matchState.matchStatus === 'finished') return;
-
-    historyRef.current.push(matchState);
-    // Both the time and the name are minted here, once, so that everything
-    // hanging off this point — the log, and in time a rally clip — agrees about
-    // which point it was.
-    const nextState = addPoint(matchState, winner, Date.now(), newPointId());
-    await commit(nextState);
-
-    // This point ended the match — the guard above means it was still running.
-    if (nextState.matchStatus === 'finished') {
-      const record = toMatchRecord(nextState);
-      if (record) await appendToHistory(record);
-    }
-
-    await audioQueue.handlePointEvent(nextState);
-  };
-
-  const handleUndo = async () => {
-    const previousState = historyRef.current.pop();
-    if (!previousState) return;
-
-    await commit(previousState);
-    await audioQueue.handleUndo();
-  };
-
-  const handleSelectServer = async (side: PlayerSide, playerIndex: 0 | 1) => {
-    if (!matchState) return;
-    await commit(setServingPlayer(matchState, side, playerIndex));
-  };
-
-  const handleSwapSides = async () => {
-    if (!matchState) return;
-    await commit({
-      ...matchState,
-      courtSide: matchState.courtSide === 'original' ? 'swapped' : 'original',
+  const handleStartNewMatch = (config: MatchConfig) =>
+    through(async () => {
+      historyRef.current.clear();
+      await commit(createMatch(config));
     });
-  };
 
-  const handleUpdateMatchConfig = async (updated: Partial<MatchConfig>) => {
-    if (!matchState) return;
-    await commit({
-      ...matchState,
-      config: { ...matchState.config, ...updated },
+  const handleAddPoint = (winner: PlayerSide) =>
+    through(async () => {
+      const current = liveRef.current;
+      if (!current || current.matchStatus === 'finished') return;
+
+      historyRef.current.push(current);
+      // Both the time and the name are minted here, once, so that everything
+      // hanging off this point — the log, and in time a rally clip — agrees about
+      // which point it was.
+      const nextState = addPoint(current, winner, Date.now(), newPointId());
+      await commit(nextState);
+
+      // This point ended the match — the guard above means it was still running.
+      if (nextState.matchStatus === 'finished') {
+        const record = toMatchRecord(nextState);
+        if (record) await appendToHistory(record);
+      }
+
+      await audioQueue.handlePointEvent(nextState);
     });
-  };
 
-  const handleAbandonMatch = async () => {
-    historyRef.current.clear();
-    setMatchState(null);
-    setCanUndo(false);
-    await saveCurrentMatch(null);
-    await saveUndoStack([]);
-  };
+  const handleUndo = () =>
+    through(async () => {
+      const previousState = historyRef.current.pop();
+      if (!previousState) return;
+
+      await commit(previousState);
+      await audioQueue.handleUndo();
+    });
+
+  const handleSelectServer = (side: PlayerSide, playerIndex: 0 | 1) =>
+    through(async () => {
+      const current = liveRef.current;
+      if (!current) return;
+      await commit(setServingPlayer(current, side, playerIndex));
+    });
+
+  const handleSwapSides = () =>
+    through(async () => {
+      const current = liveRef.current;
+      if (!current) return;
+      await commit({
+        ...current,
+        courtSide: current.courtSide === 'original' ? 'swapped' : 'original',
+      });
+    });
+
+  const handleUpdateMatchConfig = (updated: Partial<MatchConfig>) =>
+    through(async () => {
+      const current = liveRef.current;
+      if (!current) return;
+      await commit({
+        ...current,
+        config: { ...current.config, ...updated },
+      });
+    });
+
+  const handleAbandonMatch = () =>
+    through(async () => {
+      historyRef.current.clear();
+      liveRef.current = null;
+      setMatchState(null);
+      setCanUndo(false);
+      await saveCurrentMatch(null);
+      await saveUndoStack([]);
+    });
 
   return {
     matchState,

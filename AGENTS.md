@@ -973,11 +973,19 @@ would be the same kind of lie as a heartbeat that proves the wrong thing. The
 funnel tolerates both; neither guarantee leaks into the other.
 
 **The gate must serialise local taps too**, not only remote ones. `handleAddPoint`
-reads `matchState` out of a closure and writes back a state derived from it; two
-calls arriving before a re-render both read the same value and the second
-overwrites the first, losing a point and pushing the same state onto the undo
+used to read `matchState` out of a closure and write back a state derived from
+it; two calls arriving before a re-render both read the same value and the second
+overwrote the first, losing a point and pushing the same state onto the undo
 stack twice. Two fingers on a phone rarely manage it. A remote firing
 asynchronously into the same funnel will.
+
+**Part of this exists already.** `useMatch` now runs every change through
+`through()`, one at a time, reading the match from `liveRef` — the last commit
+rather than the last render. `MatchLink` hands points and undos up through
+`onPointRequest` / `onUndoRequest`, and `useHosting` wires both to the same
+handlers the tap zones use. What is *not* built is the envelope: ids, epochs,
+expected revisions, the processed-id log and receipts. Those arrive with the
+watch, because until something can mint an id there is nothing to check.
 
 Five things the watch build must not do, because each is expensive to unpick:
 

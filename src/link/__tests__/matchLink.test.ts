@@ -113,6 +113,22 @@ describe('a second screen', () => {
     expect(scoreboard.current!.points).toEqual([0, 0]);
   });
 
+  // A third of the watch's vocabulary is the long press. Until this reaches the
+  // app, that gesture arrives and disappears — the protocol used to drop it on
+  // the floor without a word.
+  test('an undo asked for from another device reaches the app', async () => {
+    const { scoreboard, display } = pair();
+    let asked = 0;
+    scoreboard.onUndoRequest = () => (asked += 1);
+
+    await scoreboard.host(createMatch(config), 'A vs B');
+    await display.join('phone-a');
+
+    await display.requestUndo();
+
+    expect(asked).toBe(1);
+  });
+
   test('and once the app does score it, both agree', async () => {
     const { scoreboard, display } = pair();
     scoreboard.onPointRequest = (winner) => void scorePoint(scoreboard, winner, 1);

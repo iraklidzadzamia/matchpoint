@@ -57,7 +57,12 @@ export const ScoreScreen: React.FC<ScoreScreenProps> = ({
   // Off unless asked for: advertising costs radio and battery, and most matches
   // are one phone on a bench.
   const [hosting, setHosting] = useState(false);
-  const { code, connection, available } = useHosting(matchState, hosting);
+  // A joined device asks; these are the same handlers the tap zones use, so a
+  // point scored from anywhere takes exactly one route through the app.
+  const { code, connection, available } = useHosting(matchState, hosting, {
+    onPoint: onAddPoint,
+    onUndo,
+  });
   const [tapCount, setTapCount] = useState(0);
 
   // Timer calculation
