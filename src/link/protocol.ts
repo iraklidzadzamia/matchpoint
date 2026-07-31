@@ -29,7 +29,17 @@ export type Message =
    * point times. Sent once on joining; a round trip is enough to be accurate to
    * far better than the seconds a video clip needs.
    */
-  | { kind: 'clock'; sentAt: number };
+  | { kind: 'clock'; sentAt: number }
+  /**
+   * The scoreboard saying it is still there, on a timer.
+   *
+   * Needed because a connection can stay open long after the far end is gone —
+   * the transport only notices when its own timeout expires, which is far too
+   * late for a screen the court is reading. Silence is the signal here, so this
+   * has to arrive on a schedule rather than only when something happens: points
+   * can be minutes apart, and those minutes must not look like a fault.
+   */
+  | { kind: 'alive'; sentAt: number };
 
 /** A device seen nearby, as it should be shown to somebody choosing one. */
 export interface PeerInfo {

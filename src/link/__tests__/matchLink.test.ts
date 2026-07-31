@@ -22,11 +22,28 @@ const config: MatchConfig = {
   servingFirst: 'side1',
 };
 
+const opened: MatchLink[] = [];
+
+/**
+ * Builds a link and remembers it. Hosting runs a heartbeat and a mirror runs a
+ * silence timer, and both live until the link is left — a test that forgot would
+ * hold the whole run open rather than fail, which is a miserable way to find out.
+ */
+function link(transport: LoopbackTransport, ownership: 'host' | 'guest'): MatchLink {
+  const created = new MatchLink(transport, ownership);
+  opened.push(created);
+  return created;
+}
+
+afterEach(async () => {
+  await Promise.all(opened.splice(0).map((created) => created.leave()));
+});
+
 /** A scoreboard and a second device on one network, not yet connected. */
 function pair() {
   const network = new LoopbackNetwork();
-  const scoreboard = new MatchLink(new LoopbackTransport(network, 'phone-a'), 'host');
-  const display = new MatchLink(new LoopbackTransport(network, 'phone-b'), 'guest');
+  const scoreboard = link(new LoopbackTransport(network, 'phone-a'), 'host');
+  const display = link(new LoopbackTransport(network, 'phone-b'), 'guest');
   return { network, scoreboard, display };
 }
 
@@ -80,7 +97,7 @@ describe('a second screen', () => {
 
   test('a second screen cannot be talked into owning the match', async () => {
     const { network, scoreboard, display } = pair();
-    const other = new MatchLink(new LoopbackTransport(network, 'phone-c'), 'guest');
+    const other = link(new LoopbackTransport(network, 'phone-c'), 'guest');
 
     await scoreboard.host(createMatch(config), 'A vs B');
     await display.join('phone-a');
@@ -126,9 +143,9 @@ describe('choosing which phone', () => {
 
   test('several courts each show up, and the code tells them apart', async () => {
     const network = new LoopbackNetwork();
-    const courtOne = new MatchLink(new LoopbackTransport(network, 'court-1'), 'host');
-    const courtTwo = new MatchLink(new LoopbackTransport(network, 'court-2'), 'host');
-    const joiner = new MatchLink(new LoopbackTransport(network, 'joiner'), 'guest');
+    const courtOne = link(new LoopbackTransport(network, 'court-1'), 'host');
+    const courtTwo = link(new LoopbackTransport(network, 'court-2'), 'host');
+    const joiner = link(new LoopbackTransport(network, 'joiner'), 'guest');
 
     // Two groups whose names genuinely match — the situation names alone cannot
     // resolve.
@@ -162,9 +179,9 @@ describe('choosing which phone', () => {
 
   test('joining connects to the one chosen, not to whatever answered', async () => {
     const network = new LoopbackNetwork();
-    const wanted = new MatchLink(new LoopbackTransport(network, 'wanted'), 'host');
-    const other = new MatchLink(new LoopbackTransport(network, 'other'), 'host');
-    const joiner = new MatchLink(new LoopbackTransport(network, 'joiner'), 'guest');
+    const wanted = link(new LoopbackTransport(network, 'wanted'), 'host');
+    const other = link(new LoopbackTransport(network, 'other'), 'host');
+    const joiner = link(new LoopbackTransport(network, 'joiner'), 'guest');
 
     await wanted.host(createMatch(config), 'The one we want');
     await other.host(createMatch(config), 'Somebody else');
@@ -186,11 +203,62 @@ describe('choosing which phone', () => {
   });
 });
 
+// A connection can stay open long after the far end is gone, so a mirror cannot
+// wait for the transport to admit it. It listens for silence instead.
+describe('a mirror listening for the scoreboard', () => {
+  test('stays quiet through a long gap between points', async () => {
+    jest.useFakeTimers();
+    try {
+      const { scoreboard, display } = pair();
+      const told: boolean[] = [];
+      display.onLiveness = (heard) => told.push(heard);
+
+      await scoreboard.host(createMatch(config), 'A vs B');
+      await display.join('phone-a');
+
+      // Far longer than the silence threshold, and not a single point scored in
+      // it — exactly the stretch that must not be mistaken for a fault.
+      jest.advanceTimersByTime(30_000);
+
+      expect(told).toEqual([]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('says so once the scoreboard goes quiet', async () => {
+    jest.useFakeTimers();
+    try {
+      const { scoreboard, display } = pair();
+      const told: boolean[] = [];
+      display.onLiveness = (heard) => told.push(heard);
+
+      await scoreboard.host(createMatch(config), 'A vs B');
+      await display.join('phone-a');
+
+      jest.advanceTimersByTime(4000);
+      expect(told).toEqual([]);
+
+      // The phone keeping score vanishes: no goodbye, just nothing more.
+      await scoreboard.leave();
+
+      // One missed beat is not enough to shout about.
+      jest.advanceTimersByTime(3000);
+      expect(told).toEqual([]);
+
+      jest.advanceTimersByTime(6000);
+      expect(told).toEqual([false]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
 describe('a camera lining up its recording', () => {
   test('learns how far its clock is from the scoreboard', async () => {
     const network = new LoopbackNetwork();
-    const scoreboard = new MatchLink(new LoopbackTransport(network, 'phone-a'), 'host');
-    const camera = new MatchLink(new LoopbackTransport(network, 'phone-b'), 'guest');
+    const scoreboard = link(new LoopbackTransport(network, 'phone-a'), 'host');
+    const camera = link(new LoopbackTransport(network, 'phone-b'), 'guest');
 
     await scoreboard.host(createMatch(config), 'A vs B');
     await camera.join('phone-a');

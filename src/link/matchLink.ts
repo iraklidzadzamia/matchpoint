@@ -2,6 +2,19 @@ import { MatchState, PlayerSide } from '../engine/types';
 import { addPoint } from '../engine/scoring';
 import { Message, Ownership, PeerInfo, Transport, matchCode } from './protocol';
 
+/** How often the scoreboard says it is still there. */
+const HEARTBEAT_MS = 2000;
+
+/**
+ * How long a mirror sits in silence before deciding the scoreboard is gone.
+ *
+ * Three missed beats rather than one. A single dropped packet, or the scorer
+ * glancing at another app for a moment, must not throw a warning up on a screen
+ * the whole court is reading — a second screen that cries wolf gets ignored,
+ * which costs more than the few seconds of lag this buys back.
+ */
+const SILENCE_MS = 7000;
+
 /**
  * Keeps several devices looking at the same match.
  *
@@ -14,6 +27,10 @@ import { Message, Ownership, PeerInfo, Transport, matchCode } from './protocol';
  * A camera needs none of this while playing: it records continuously and only
  * needs the scoreboard's clock at the start and the point times at the end. A
  * connection dropping mid-match therefore loses nothing.
+ *
+ * **A screen, though, has to know it went deaf.** The scoreboard beats on a
+ * timer and a mirror watches for silence, because the transport's own idea of
+ * "connected" outlives the truth by far too long to show a court.
  */
 export class MatchLink {
   private stopListening: (() => void) | null = null;
@@ -25,6 +42,17 @@ export class MatchLink {
   onState: ((state: MatchState) => void) | null = null;
   /** Called with what is nearby, while browsing. */
   onPeers: ((peers: PeerInfo[]) => void) | null = null;
+  /**
+   * Called on a guest when the scoreboard starts or stops being heard. Separate
+   * from the transport's own connection state, which stays hopeful for far
+   * longer than a scoreboard can afford to be trusted.
+   */
+  onLiveness: ((heard: boolean) => void) | null = null;
+
+  private heartbeat: ReturnType<typeof setInterval> | null = null;
+  private listening: ReturnType<typeof setInterval> | null = null;
+  private lastHeardAt = 0;
+  private heard = true;
 
   private stopWatchingConnection: (() => void) | null = null;
 
@@ -65,6 +93,13 @@ export class MatchLink {
   async host(state: MatchState, name: string): Promise<void> {
     this.state = state;
     await this.transport.advertise({ name, code: matchCode(state.matchStartTime) });
+
+    // Runs whether or not anybody has joined: with nobody listening the sends go
+    // nowhere, and starting it here means a device that joins later is never
+    // waiting on the next thing to happen in the match before it hears anything.
+    this.heartbeat ??= setInterval(() => {
+      void this.transport.send({ kind: 'alive', sentAt: Date.now() });
+    }, HEARTBEAT_MS);
   }
 
   /** Look for scoreboards. Stops when `join` succeeds or `leave` is called. */
@@ -78,6 +113,12 @@ export class MatchLink {
     await this.transport.connect(peerId);
     this.stopBrowsing?.();
     this.stopBrowsing = null;
+
+    // The clock starts now rather than at the first message, so a scoreboard
+    // that never answers at all is caught by the same silence that catches one
+    // going quiet later.
+    this.lastHeardAt = Date.now();
+    this.listening ??= setInterval(() => this.checkSilence(), 1000);
 
     // A transport that reports connections sends the opening message itself,
     // once there is a connection to send it down. One that does not — the
@@ -111,6 +152,10 @@ export class MatchLink {
   }
 
   async leave(): Promise<void> {
+    if (this.heartbeat) clearInterval(this.heartbeat);
+    this.heartbeat = null;
+    if (this.listening) clearInterval(this.listening);
+    this.listening = null;
     this.stopWatchingConnection?.();
     this.stopWatchingConnection = null;
     this.stopBrowsing?.();
@@ -121,7 +166,23 @@ export class MatchLink {
     await this.transport.disconnect();
   }
 
+  /**
+   * Whether the scoreboard has been heard from recently enough to be believed.
+   * Only meaningful on a guest.
+   */
+  private checkSilence(): void {
+    const heard = Date.now() - this.lastHeardAt < SILENCE_MS;
+    if (heard === this.heard) return;
+    this.heard = heard;
+    this.onLiveness?.(heard);
+  }
+
   private receive(message: Message): void {
+    // Any message at all proves the scoreboard is there. What it says does not
+    // matter — that it arrived does.
+    this.lastHeardAt = Date.now();
+    if (!this.heard) this.checkSilence();
+
     switch (message.kind) {
       case 'state':
         // Only a scoreboard produces these, so anything arriving here is newer
@@ -146,6 +207,10 @@ export class MatchLink {
         } else {
           this.clockOffsetMs = message.sentAt - Date.now();
         }
+        return;
+
+      case 'alive':
+        // Nothing to do: arriving was the entire message.
         return;
     }
   }
