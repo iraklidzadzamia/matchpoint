@@ -85,6 +85,16 @@ export class MatchLink {
    * before any device other than the scoreboard can score.
    */
   onPointRequest: ((winner: PlayerSide) => void) | null = null;
+  /**
+   * Called when a message could not be sent at all.
+   *
+   * Nothing has to act on this for the link to be correct — a lost state message
+   * is caught by the next heartbeat carrying a revision the mirror does not
+   * have, and asked for again. But a failure nobody can even see is not
+   * something to keep building on top of, and the native side used to discard
+   * these entirely.
+   */
+  onSendError: ((error: unknown) => void) | null = null;
 
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private listening: ReturnType<typeof setInterval> | null = null;
@@ -142,7 +152,7 @@ export class MatchLink {
     // nowhere, and starting it here means a device that joins later is never
     // waiting on the next thing to happen in the match before it hears anything.
     this.heartbeat ??= setInterval(() => {
-      void this.transport.send({
+      this.emit({
         kind: 'alive',
         revision: this.revision,
         sentAt: Date.now(),
@@ -181,7 +191,17 @@ export class MatchLink {
   /** Asks the scoreboard what time it is. The answer does the arithmetic. */
   private probeClock(): void {
     if (this.ownership === 'host') return;
-    void this.transport.send({ kind: 'clock', sentAt: Date.now() });
+    this.emit({ kind: 'clock', sentAt: Date.now() });
+  }
+
+  /**
+   * Every send in this class goes through here: fired without waiting, because
+   * nothing upstairs can usefully block on a radio, and never silently, because
+   * a send that failed is one of the ways a screen ends up trusting a score that
+   * never arrived.
+   */
+  private emit(message: Message): void {
+    void this.transport.send(message).catch((error) => this.onSendError?.(error));
   }
 
   /**
@@ -197,7 +217,7 @@ export class MatchLink {
       this.onPointRequest?.(winner);
       return;
     }
-    await this.transport.send({ kind: 'point', winner });
+    this.emit({ kind: 'point', winner });
   }
 
   /**
@@ -216,7 +236,7 @@ export class MatchLink {
       this.revision += 1;
     }
     if (!this.state) return;
-    await this.transport.send({
+    this.emit({
       kind: 'state',
       state: this.state,
       revision: this.revision,
@@ -295,7 +315,7 @@ export class MatchLink {
         // Answered with both ends of the handling, so the asker can cancel the
         // travel out rather than mistake it for a difference between clocks.
         const receivedAt = Date.now();
-        void this.transport.send({
+        this.emit({
           kind: 'clockReply',
           askedAt: message.sentAt,
           receivedAt,
@@ -324,7 +344,7 @@ export class MatchLink {
         // The scoreboard has moved on and this device never got the message that
         // said so. Ask for the match rather than keep showing a score now known
         // to be behind.
-        void this.transport.send({ kind: 'syncRequest' });
+        this.emit({ kind: 'syncRequest' });
         return;
     }
   }

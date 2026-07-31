@@ -151,6 +151,30 @@ describe('a second screen', () => {
   });
 });
 
+// The native side used to discard these with `try?`. Nothing upstairs can
+// usefully block on a radio, so the send is still fired and forgotten — but
+// forgotten is not the same as unseen.
+describe('a send that cannot go out', () => {
+  test('is reported rather than swallowed', async () => {
+    const network = new LoopbackNetwork();
+    const transport = new LoopbackTransport(network, 'phone-a');
+    transport.send = async () => {
+      throw new Error('radio off');
+    };
+
+    const scoreboard = link(transport, 'host');
+    const seen: unknown[] = [];
+    scoreboard.onSendError = (error) => seen.push(error);
+
+    await scoreboard.host(createMatch(config), 'A vs B');
+    await scorePoint(scoreboard, 'side1', 1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(seen).toHaveLength(1);
+    expect((seen[0] as Error).message).toBe('radio off');
+  });
+});
+
 describe('choosing which phone', () => {
   test('a scoreboard is listed with its match and its code', async () => {
     const { scoreboard, display } = pair();

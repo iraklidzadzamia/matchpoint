@@ -19,6 +19,10 @@ import UIKit
 
 private let serviceType = "matchpoint-mp"
 
+enum MatchLinkError: Error {
+  case unencodablePayload
+}
+
 /**
  * Does the actual Multipeer work.
  *
@@ -96,9 +100,23 @@ final class MultipeerCoordinator: NSObject {
 
   /// Reliable delivery: a dropped state update leaves a second screen showing a
   /// score that never existed.
-  func send(payload: String) {
-    guard !session.connectedPeers.isEmpty, let data = payload.data(using: .utf8) else { return }
-    try? session.send(data, toPeers: session.connectedPeers, with: .reliable)
+  ///
+  /// **Nobody connected is not a failure.** The scoreboard beats from the moment
+  /// it starts hosting, deliberately, so a phone joining later hears something
+  /// straight away instead of waiting for the next thing to happen in the match.
+  /// Calling those sends errors would have a perfectly healthy scoreboard
+  /// complaining continuously about an empty court.
+  ///
+  /// A session refusing to send to peers that *are* there is another matter
+  /// entirely, and it has to reach JavaScript. Swallowing it — which this did —
+  /// is one of the ways a mirror ends up showing an old score under a healthy
+  /// banner.
+  func send(payload: String) throws {
+    guard !session.connectedPeers.isEmpty else { return }
+    guard let data = payload.data(using: .utf8) else {
+      throw MatchLinkError.unencodablePayload
+    }
+    try session.send(data, toPeers: session.connectedPeers, with: .reliable)
   }
 
   func teardown() {
@@ -251,7 +269,7 @@ public class MatchLinkModule: Module {
     }
 
     AsyncFunction("send") { (payload: String) in
-      self.coordinator.send(payload: payload)
+      try self.coordinator.send(payload: payload)
     }
 
     OnDestroy {
