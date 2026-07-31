@@ -765,6 +765,21 @@ JPEGs stays fast no matter how many clips exist.
 Per clip, offer **Save to Photos** and **Share**. That is how a keeper leaves the
 app and lives forever, without dragging the other hundred and forty with it.
 
+### A clip outlives the point it was attached to
+
+Undo corrects the score. It does not un-happen the rally, and the rally is what
+was filmed — quite possibly the best one of the evening, since the points that
+get scored wrong in the excitement tend to be the ones worth watching.
+
+So an undone point's clip **is kept**, and shown marked as belonging to a point
+that was taken back. Not silently deleted, and not left looking like a scored
+point either: the label is the whole trick, because a clip presenting itself as a
+point nobody was awarded is its own small lie.
+
+This is also why clips are keyed by a stable `pointId` and never by a point
+index. After an undo the index is handed straight to a different point, and a
+clip keyed by it would reattach itself to a rally it never saw.
+
 ### The screen shows whatever the device is for
 
 A phone doing **both** jobs is a scoreboard first. iOS does not need a visible
