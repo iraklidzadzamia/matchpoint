@@ -728,9 +728,16 @@ So do not guess in advance and do not settle it with a scary dialog. iOS reports
 - **`serious`** — drop capture quality, keep recording.
 - **`critical`** — stop recording, say so plainly, leave the score alone.
 
-**Video is the thing that gets sacrificed. The score never is.** Record at 720p
-by default: these are twenty-second rally clips, not cinema, and 1080p doubles
-the heat and the storage for something nobody will notice on a phone.
+**Video is the thing that gets sacrificed. The score never is.** Record at 1080p30
+by default and let the thermal ladder drop it to 720p, rather than starting low
+to be safe — the encoder is fixed-function silicon and 1080p30 barely troubles a
+modern iPhone. It is 4K and 60fps that cook one, and neither is wanted here.
+
+Storage, not heat, is what 1080p actually costs, and it is not small: at ~12 Mbps
+a twenty-second clip is around 30 MB, so capturing every point in a long match
+approaches 4.5 GB — roughly triple the same match at 720p. Quality and
+keep-everything cannot both be free. Whatever retention rule gets chosen, decide
+it deliberately and not by letting the disk fill.
 
 A warning belongs at the moment somebody switches a device into both roles at
 once, in plain language, and nowhere else.
@@ -758,16 +765,24 @@ JPEGs stays fast no matter how many clips exist.
 Per clip, offer **Save to Photos** and **Share**. That is how a keeper leaves the
 app and lives forever, without dragging the other hundred and forty with it.
 
-### The camera preview is for aiming, not for watching
+### The screen shows whatever the device is for
 
-iOS does not need a visible preview to record, so a phone doing both jobs shows
-the score full-screen and films unseen. Not drawing a live preview is also the
-cooler option, which is the whole point of the section above.
+A phone doing **both** jobs is a scoreboard first. iOS does not need a visible
+preview to record, so it shows the score full-screen and films unseen — which is
+also the cooler option, and the whole point of the section above. The preview
+appears while the phone is being set up and pointed, hands the screen back on
+"done", and leaves a small mark that recording is live. Checking the framing
+mid-match means going back to it for a moment, deliberately.
 
-But a camera nobody can see is a camera nobody can aim. So: show the preview
-while the phone is being set up and pointed, hand the screen back to the score on
-"done", and leave a small mark that recording is live. Checking the framing
-mid-match means going back to the preview for a moment, deliberately.
+A phone that is **only** a camera shows the camera. It is wedged in a fence at
+the back of the court where nobody can read anything anyway, and putting a
+scoreboard on it would be a scoreboard nobody asked for on a screen nobody is
+looking at.
+
+That phone should also be spared the scoreboard's habits: `useMaxBrightness` and
+the keep-awake exist so a score can be read across a court, and neither is doing
+anything for a lens. Leaving them off is the single cheapest thing available for
+the heat of the device that is actually encoding video.
 
 ### Before this ships, the privacy page has to change first
 
