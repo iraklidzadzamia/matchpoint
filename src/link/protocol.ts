@@ -31,11 +31,30 @@ export type Message =
   | { kind: 'point'; winner: PlayerSide }
   | { kind: 'undo' }
   /**
-   * The scoreboard's clock, so a camera can line its recording up with the
-   * point times. Sent once on joining; a round trip is enough to be accurate to
-   * far better than the seconds a video clip needs.
+   * A probe at the scoreboard's clock, so a camera can line its recording up
+   * with the point times. Sent by whoever wants to know; answered immediately.
    */
   | { kind: 'clock'; sentAt: number }
+  /**
+   * The answer, carrying **three** timestamps rather than one.
+   *
+   * One is not enough, and the earlier version of this that sent one was simply
+   * wrong: subtracting a received time from a sent time measures the offset plus
+   * however long the message took to arrive, and reports the sum as the offset.
+   * With all four — asked, received, answered, heard — the travel time cancels:
+   *
+   *     offset = ((received − asked) + (answered − heard)) / 2
+   *
+   * Both host timestamps are carried because taking them separately costs
+   * nothing and removes the assumption that answering was instant.
+   */
+  | {
+      kind: 'clockReply';
+      /** Echoed back so the asker need remember nothing. */
+      askedAt: number;
+      receivedAt: number;
+      sentAt: number;
+    }
   /**
    * The scoreboard saying it is still there, on a timer, along with the revision
    * it believes everyone should be showing.

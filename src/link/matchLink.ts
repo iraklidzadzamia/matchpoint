@@ -19,6 +19,18 @@ const HEARTBEAT_MS = 2000;
 const SILENCE_MS = 7000;
 
 /**
+ * How often a guest re-checks the scoreboard's clock.
+ *
+ * Two phones' clocks do not merely differ, they drift apart, and consumer
+ * crystals are good to some tens of parts per million — enough to eat most of
+ * the quarter-second a clip's boundaries are allowed to be out by, over a
+ * ninety-minute match. Measuring the drift properly would take pairs of devices
+ * and a long afternoon in the sun; asking again now and then costs two tiny
+ * messages and settles the question instead.
+ */
+const RESYNC_MS = 5 * 60 * 1000;
+
+/**
  * Keeps several devices looking at the same match.
  *
  * **One device holds the truth.** The scoreboard owns the state and is the only
@@ -76,6 +88,7 @@ export class MatchLink {
 
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private listening: ReturnType<typeof setInterval> | null = null;
+  private resyncing: ReturnType<typeof setInterval> | null = null;
   private lastHeardAt = 0;
   private lastInSyncAt = 0;
   private trusted = true;
@@ -103,7 +116,7 @@ export class MatchLink {
           // Somebody just joined: send them the match without being asked.
           void this.publish();
         } else {
-          void this.transport.send({ kind: 'clock', sentAt: Date.now() });
+          this.probeClock();
         }
       }) ?? null;
   }
@@ -155,13 +168,20 @@ export class MatchLink {
     this.lastHeardAt = Date.now();
     this.lastInSyncAt = this.lastHeardAt;
     this.listening ??= setInterval(() => this.checkTrust(), 1000);
+    this.resyncing ??= setInterval(() => this.probeClock(), RESYNC_MS);
 
     // A transport that reports connections sends the opening message itself,
     // once there is a connection to send it down. One that does not — the
     // in-memory one — is connected the moment it is asked, so send it now.
     if (!this.transport.onConnection) {
-      await this.transport.send({ kind: 'clock', sentAt: Date.now() });
+      this.probeClock();
     }
+  }
+
+  /** Asks the scoreboard what time it is. The answer does the arithmetic. */
+  private probeClock(): void {
+    if (this.ownership === 'host') return;
+    void this.transport.send({ kind: 'clock', sentAt: Date.now() });
   }
 
   /**
@@ -209,6 +229,8 @@ export class MatchLink {
     this.heartbeat = null;
     if (this.listening) clearInterval(this.listening);
     this.listening = null;
+    if (this.resyncing) clearInterval(this.resyncing);
+    this.resyncing = null;
     this.stopWatchingConnection?.();
     this.stopWatchingConnection = null;
     this.stopBrowsing?.();
@@ -268,14 +290,28 @@ export class MatchLink {
         if (this.ownership === 'host') void this.publish();
         return;
 
-      case 'clock':
-        if (this.ownership === 'host') {
-          void this.transport.send({ kind: 'clock', sentAt: Date.now() });
-          void this.publish();
-        } else {
-          this.clockOffsetMs = message.sentAt - Date.now();
-        }
+      case 'clock': {
+        if (this.ownership !== 'host') return;
+        // Answered with both ends of the handling, so the asker can cancel the
+        // travel out rather than mistake it for a difference between clocks.
+        const receivedAt = Date.now();
+        void this.transport.send({
+          kind: 'clockReply',
+          askedAt: message.sentAt,
+          receivedAt,
+          sentAt: Date.now(),
+        });
+        void this.publish();
         return;
+      }
+
+      case 'clockReply': {
+        if (this.ownership === 'host') return;
+        const heardAt = Date.now();
+        this.clockOffsetMs =
+          (message.receivedAt - message.askedAt + (message.sentAt - heardAt)) / 2;
+        return;
+      }
 
       case 'alive':
         if (this.ownership === 'host') return;

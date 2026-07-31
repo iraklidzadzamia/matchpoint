@@ -355,4 +355,33 @@ describe('a camera lining up its recording', () => {
     // matters is that an offset was worked out at all.
     expect(Math.abs(camera.clockOffset)).toBeLessThan(50);
   });
+
+  // The loopback is instant, which is exactly why it cannot catch the bug this
+  // guards against: a reply carrying one timestamp reports the difference
+  // between the clocks *plus* however long the message took, and calls the sum
+  // the difference. Here the answer is built by hand with the travel written in.
+  test('cancels the travel out instead of counting it as a difference', async () => {
+    const network = new LoopbackNetwork();
+    const hostTransport = new LoopbackTransport(network, 'phone-a');
+    const scoreboard = link(hostTransport, 'host');
+    const camera = link(new LoopbackTransport(network, 'phone-b'), 'guest');
+
+    await scoreboard.host(createMatch(config), 'A vs B');
+    await camera.join('phone-a');
+
+    // A scoreboard whose clock reads a second ahead, answering a probe that took
+    // 200 ms to reach it and 200 ms to come back.
+    const askedAt = Date.now() - 400;
+    const receivedAt = askedAt + 200 + 1000;
+    await hostTransport.send({
+      kind: 'clockReply',
+      askedAt,
+      receivedAt,
+      sentAt: receivedAt,
+    });
+
+    // One second, not one and a fifth: the round trip cancels.
+    expect(camera.clockOffset).toBeGreaterThan(950);
+    expect(camera.clockOffset).toBeLessThan(1050);
+  });
 });
