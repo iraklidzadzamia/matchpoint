@@ -11,6 +11,18 @@ import {
 } from '../storage/matchStorage';
 import { audioQueue } from '../audio/audioQueue';
 
+/**
+ * A name for one point, unique enough for anything that will ever hold one.
+ *
+ * Deliberately not the point's position in the log: undo hands that index to the
+ * next point played, and a clip filed under it would reattach itself to a rally
+ * it never saw. Deliberately not a library either — a timestamp and eight random
+ * characters is already far past any collision this app can produce.
+ */
+function newPointId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function useMatch() {
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [canUndo, setCanUndo] = useState(false);
@@ -44,7 +56,10 @@ export function useMatch() {
     if (!matchState || matchState.matchStatus === 'finished') return;
 
     historyRef.current.push(matchState);
-    const nextState = addPoint(matchState, winner);
+    // Both the time and the name are minted here, once, so that everything
+    // hanging off this point — the log, and in time a rally clip — agrees about
+    // which point it was.
+    const nextState = addPoint(matchState, winner, Date.now(), newPointId());
     await commit(nextState);
 
     // This point ended the match — the guard above means it was still running.

@@ -21,6 +21,33 @@ describe('MatchPoint Scoring Engine', () => {
     servingFirst: 'side1',
   };
 
+  // Undo goes back to a previous state, so the next point played lands at the
+  // same position in the log as the one that was taken back. Anything filed
+  // under that position — a rally clip, above all — would follow it there.
+  describe('a point is named, not numbered', () => {
+    test('carries the name it was given', () => {
+      const match = addPoint(createMatch(defaultConfig), 'side1', 1, 'abc');
+      expect(match.pointLog[0].id).toBe('abc');
+    });
+
+    test('two different points can share a position and never an identity', () => {
+      const start = createMatch(defaultConfig);
+      const scored = addPoint(start, 'side1', 1, 'first-try');
+      // The undo: back to `start`, and somebody scores the other side instead.
+      const rescored = addPoint(start, 'side2', 2, 'after-the-correction');
+
+      expect(scored.pointLog).toHaveLength(1);
+      expect(rescored.pointLog).toHaveLength(1);
+      expect(scored.pointLog[0].id).not.toBe(rescored.pointLog[0].id);
+      expect(scored.pointLog[0].winner).not.toBe(rescored.pointLog[0].winner);
+    });
+
+    test('points logged before ids existed simply have none', () => {
+      const match = addPoint(createMatch(defaultConfig), 'side1', 1);
+      expect(match.pointLog[0].id).toBeUndefined();
+    });
+  });
+
   test('creates new match correctly', () => {
     const match = createMatch(defaultConfig);
     expect(match.points).toEqual([0, 0]);

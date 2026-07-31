@@ -156,12 +156,19 @@ export function getDisplayScore(state: MatchState): { side1Score: string; side2S
  *
  * `at` is passed in rather than read from the clock inside, so the engine stays
  * deterministic: the same points and the same times always produce the same
- * match, which is what the invariant tests rely on.
+ * match, which is what the invariant tests rely on. `id` arrives the same way
+ * and for the same reason — minting one in here would make this function's
+ * output depend on something other than its arguments.
  */
-export function addPoint(state: MatchState, winner: PlayerSide, at: number = Date.now()): MatchState {
+export function addPoint(
+  state: MatchState,
+  winner: PlayerSide,
+  at: number = Date.now(),
+  id?: string
+): MatchState {
   if (state.matchStatus === 'finished') return state;
 
-  if (isPointsMode(state.config)) return addRawPoint(state, winner, at);
+  if (isPointsMode(state.config)) return addRawPoint(state, winner, at, id);
 
   // Read the server off the state going *in*: applying the point can end a game
   // and hand the serve over, so `next.serving` is whoever serves the point after
@@ -171,6 +178,7 @@ export function addPoint(state: MatchState, winner: PlayerSide, at: number = Dat
 
   const next = applyPoint(state, winner);
   next.pointLog.push({
+    id,
     at,
     winner,
     type: next.lastEvent?.type ?? 'point',
@@ -188,7 +196,12 @@ export function addPoint(state: MatchState, winner: PlayerSide, at: number = Dat
  * this mode counts actual points rather than the 0/15/30/40 ladder, and the
  * match ends the moment somebody reaches the target.
  */
-function addRawPoint(state: MatchState, winner: PlayerSide, at: number): MatchState {
+function addRawPoint(
+  state: MatchState,
+  winner: PlayerSide,
+  at: number,
+  id?: string
+): MatchState {
   const next: MatchState = {
     ...state,
     points: [...state.points] as [number, number],
@@ -222,7 +235,7 @@ function addRawPoint(state: MatchState, winner: PlayerSide, at: number): MatchSt
     next.serving = state.serving === 'side1' ? 'side2' : 'side1';
   }
 
-  next.pointLog.push({ at, winner, type: next.lastEvent.type, served, servedByPlayer });
+  next.pointLog.push({ id, at, winner, type: next.lastEvent.type, served, servedByPlayer });
   return next;
 }
 

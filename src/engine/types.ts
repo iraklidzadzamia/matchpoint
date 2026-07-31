@@ -94,6 +94,20 @@ export interface AppSettings {
  * later, tying a saved video clip to the point it belongs to.
  */
 export interface PointRecord {
+  /**
+   * Identifies this point to anything held outside the match — a rally clip
+   * today, whatever else wants to point at one later.
+   *
+   * **A position in the log will not do.** Undo hands the same index straight to
+   * the next point played, so anything keyed by it silently reattaches itself to
+   * a rally it never saw — a clip of the wrong point, presented with complete
+   * confidence.
+   *
+   * Minted by the funnel that scores the point and passed in, which is what
+   * keeps the engine a pure function of its arguments. Optional because points
+   * logged before this existed have none, and none can be invented for them.
+   */
+  id?: string;
   at: number;
   winner: PlayerSide;
   type: MatchEvent['type'];
