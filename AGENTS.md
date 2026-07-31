@@ -825,9 +825,21 @@ players on court**: "one tap scores for my side" means nothing to somebody on
 the bench, who has no side. When the owner sits out, the remote passes to a
 player.
 
-Several watches are wanted eventually with the leader easy to hand over. That
-needs no extra machinery — each watch is another device on the same transport,
-and "who is the remote" is a mark that moves.
+**One watch, and the remote is handed over as an object.** This used to say
+several watches would need no extra machinery, each being another device on the
+same transport. That was wrong, and expensively so: WatchConnectivity pairs an
+iPhone with exactly one active watch. A second watch does not join the session,
+it replaces the first.
+
+Several players each wearing their own would therefore mean each watch talking to
+its own iPhone, and those iPhones joining the host over Multipeer — a different
+topology, with phones acting as bridges and needing to survive backgrounding.
+Worth keeping the protocol open to, worth not promising.
+
+So: the watch is paired to the host phone, and passed to whichever player is
+leading. The host marks on its own screen who is holding it and which side they
+are on, and the watch shows that assignment plainly — the wearer has to be able
+to check that "my side" means what they think it means.
 
 The leader wears the watch, which is the pult for the whole match:
 
@@ -849,6 +861,130 @@ tick fires on the resolved gesture, not the first touch.
 Expect accidental taps: a watch on a moving wrist during a rally will register
 touches nobody meant. Undo has to be trivially reachable, which is why it is
 the long press rather than a menu.
+
+**The gestures were challenged in review and kept deliberately.** The proposal
+was two separate on-screen buttons — "us" and "them" — which removes the delay
+entirely, since there is nothing to disambiguate. It was refused: a tap anywhere
+needs no aiming and no looking, and the delay is paid between points rather than
+during a rally. Do not raise this a third time without something new.
+
+What *is* worth taking from that argument: on Series 9 and later,
+`handGestureShortcut(.primaryAction)` maps the system double-pinch to a visible
+primary control, and the system gesture needs none of our timer. That is an
+accelerator for "point to my side" on newer hardware, not a replacement for the
+tap, and older watches must not lose anything by not having it.
+
+Do not try to detect racket swings through Core Motion to suppress accidents.
+Without data from a real court that is a generator of invented rules and a
+battery drain. The defences that work are cheap ones: a named wearer, no
+optimistic score on the watch, haptic only once the host has confirmed, and undo
+one long press away.
+
+### A watch remote is not a second `Transport`
+
+`Transport` looks general and is not. It is built around finding arbitrary peers
+and connecting to a chosen one, which is Multipeer's shape. WatchConnectivity has
+no discovery, no peer ids and no connect: there is one paired counterpart and a
+session that is either active or not. Three of its eight methods would have to be
+stubs pretending to be something.
+
+Give the watch its own seam at the same level, and keep the layer *above* shared.
+The lesson is not that the layering was wrong — it is that `Transport` was named
+too broadly. It is a peer transport.
+
+The delivery modes are not interchangeable, and picking wrongly here is the whole
+game:
+
+- **`sendMessage` with a reply handler** — for the tap and its receipt. Urgent,
+  and only when the counterpart is reachable.
+- **`updateApplicationContext`** — for pushing the current score, the wearer's
+  side and whether undo is available. It keeps only the latest value, which is
+  exactly right for state.
+- **`transferUserInfo`** — do **not** use it for a point. It is queued, ordered
+  and eventual, which sounds safer and is worse: a tap can surface minutes later,
+  after an undo, after the game ended, after the watch changed hands.
+
+And the honest contract that follows: **a tap either gets confirmed or is visibly
+refused.** "Delivered eventually, whatever happens" is not achievable and not
+even desirable. A queue that quietly adds a point five minutes later is worse
+than an error the wearer can see.
+
+So the watch shows no optimistic score. Tap, "sending", then either a haptic and
+the new score, or a plain failure. Nothing guessed.
+
+### A command must not be able to score twice
+
+The failure to design against: the tap arrives, the host scores it, the receipt
+is lost, the watch retries. Now the match has a point nobody played, and it is
+almost impossible to reconstruct afterwards.
+
+A command therefore carries an **id**, the **match it belongs to**, and the
+**revision it expects**. The host keeps a short log of ids it has already
+handled, checks all three before entering the funnel, and answers a duplicate
+with the same receipt as the original. Review also proposed a separate authority
+epoch; the match id already changes with the match and covers it.
+
+### Keeping the watch awake for a whole match
+
+The obvious answer is wrong. `WKExtendedRuntimeSession` caps out around an hour
+and its session types are about therapy and mindfulness — dressing a scorekeeper
+up as one to borrow background time is the kind of thing that gets noticed.
+
+`HKWorkoutSession` is the honest version and does hold the app alive, but it
+costs a HealthKit permission and writes a real workout to Health. That is
+defensible here — a padel match *is* exercise — but it must be presented as
+recording a workout, not as a keep-alive trick.
+
+There is a third answer that needs no code at all, and a competitor ships it:
+watchOS has a per-app **Return to Clock** setting, and telling the user to set it
+to an hour keeps the app in front for a whole match. Cheap, honest, and it makes
+the workout session optional rather than load-bearing. Whatever else is built,
+the setup screen should say this.
+
+Beyond the watch: the host phone cannot be assumed reachable while locked. For a
+first version, require the match screen to be up with keep-awake on — which
+`ScoreScreen` already does.
+
+### The watch target has to survive prebuild
+
+`ios/` is generated, not committed. A watchOS target added by hand in Xcode is
+destroyed by the next `expo prebuild`, which in this project happens routinely.
+
+The recommended route is a config plugin that declares the target from sources
+kept outside `ios/`, so a clean prebuild rebuilds it — `@bacons/apple-targets`
+being the known one, pinned exactly, and with its own author warning that not
+every target type is proven. **Prove it with a throwaway spike before trusting
+it**: add an empty SwiftUI watch target, run a clean prebuild twice, and check it
+comes back untouched.
+
+Do not commit `ios/` as a compromise. That is abandoning generated native
+projects entirely, and every future Expo or plugin upgrade becomes a manual
+merge into a checked-in Xcode project.
+
+An App Group is not needed for phone-to-watch: those are two devices, and their
+channel is WatchConnectivity. App Groups are for two targets on one device.
+
+### A watch is not the only remote worth supporting
+
+A competitor offers three, and does not put the watch first: a **Flic button** (a
+BLE puck, marked "recommended"), **Apple Watch**, and a **cheap BLE shutter
+remote** sold for selfies, marked as the budget option.
+
+That ordering is worth taking seriously rather than dismissing. A BLE button has
+no target to build, no prebuild problem, no signing, no watch screenshots, no
+battery session and no App Store review surface — and it clips to a racket
+handle or a net post, where a watch cannot go. Its cost is that it has one or two
+buttons and no screen, so it cannot show what was registered or who is leading.
+
+The watch remains the better remote. It is not obviously the one to build first.
+
+### Ship the phone app before either
+
+The iPhone release is close. A watch target brings its own provisioning and
+signing paths, real paired-device testing that no simulator can do, Health
+privacy questions if a workout session is used, and mandatory Apple Watch
+screenshots. None of that is prohibitive; all of it is a reason for the first
+release to slip. Ship the phone, then the remote and the camera together.
 
 ### Before building it
 
